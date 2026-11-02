@@ -1,0 +1,13 @@
+layout,robots,cbs_solved,tried,median_cbs_seconds,pp_success_and_paired,median_gap_pct,max_gap_pct
+aisle,2,5,5,0.000,5,0.00,10.81
+aisle,4,4,5,0.012,4,2.63,28.85
+aisle,6,5,5,0.038,4,3.07,7.61
+aisle,8,1,5,10.144,1,31.13,31.13
+aisle,10,0,5,10.149,0,,
+warehouse,2,5,5,0.000,5,0.00,0.00
+warehouse,4,5,5,0.001,5,2.08,6.45
+warehouse,6,5,5,0.001,5,0.00,8.22
+warehouse,8,2,5,10.101,2,0.84,1.68
+warehouse,10,3,5,0.819,3,1.89,8.24
+warehouse,12,2,5,10.109,2,4.47,8.95
+warehouse,14,0,5,10.121,0,,

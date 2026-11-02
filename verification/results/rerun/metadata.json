@@ -1,0 +1,33 @@
+{
+  "config": {
+    "quick": false,
+    "instances": 20,
+    "max_robots": 20,
+    "time_limit": 10,
+    "seed": 20261029,
+    "attempts": 32,
+    "output": "rerun_outputs",
+    "plot_only": false
+  },
+  "python": "3.13.18",
+  "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+  "seconds": 444.94777750968933,
+  "joint_stopped_at": {
+    "aisle": {
+      "first_timeout": "aisle-k4-001",
+      "num_robots": 4,
+      "policy": "finish_current_size_then_skip_larger"
+    },
+    "warehouse": {
+      "first_timeout": "warehouse-k6-008",
+      "num_robots": 6,
+      "policy": "finish_current_size_then_skip_larger"
+    }
+  },
+  "notes": "After the first Joint A* timeout in each layout, all instances at that robot count are completed; only larger sizes are skipped. Remaining rows are skipped, not failures. Success denominators exclude skipped rows. Same instance/seed for all methods. Timings are machine-dependent.",
+  "order_study": {
+    "trials_per_instance": 5,
+    "time_limit": 10,
+    "records": 2000
+  }
+}

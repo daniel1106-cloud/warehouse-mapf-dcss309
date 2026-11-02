@@ -135,6 +135,10 @@ python run.py --instances 20 --max-robots 20 --time-limit 10 --seed 20261029 --a
 
 Run the tests before conducting the full experiment. Runtime measurements vary across machines. For a consistent comparison, run all methods on the same machine and minimize other computationally intensive activity.
 
+## Independent Verification
+
+The `verification/` folder re-checks the saved results with separately written code: its own validator for every returned path, an independent CBS solver for every proven optimum, a stress test on small crowded grids, and a full re-run on a second machine. See [`verification/README.md`](verification/README.md).
+
 ## References
 
 This implementation was independently written from the method descriptions in the team proposal. It does not copy a paper's implementation or company code.

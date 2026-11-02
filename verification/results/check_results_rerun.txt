@@ -1,0 +1,4 @@
+A. Paths re-checked: 1484; mismatches with results.csv: none
+B. Proven optima: 95; PP results below the optimum: 0
+C. Optima recomputed with reference CBS: 95 equal, 0 different, 0 not solved in time
+exit=0
