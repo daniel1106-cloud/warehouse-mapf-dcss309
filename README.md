@@ -1,159 +1,161 @@
-# Warehouse Robots: Optimal Planning vs. Prioritized Planning
+# Why Warehouse Robots Don't Plan Optimally
 
-Reproducible experimental project · DCSS309 Algorithms · Group A4
+**DCSS309 Algorithms · Korea University Sejong · Group A4**
 
-## Quick Start (Windows / macOS / Linux)
+In a robotic fulfilment centre, many robots share the same narrow aisles, and every one of them needs a path that never collides with another. An optimal planner can find the cheapest set of paths, but its search grows exponentially with the number of robots. This project measures that trade-off on a small warehouse grid and asks why companies use a fast, non-optimal method, *prioritized planning*, instead.
 
-Install Python 3.10 or later. Open a terminal in the folder containing this file:
+![No coordination vs. prioritized planning](presentation/side_by_side.gif)
+
+*Same warehouse, same 10 robots. Left: every robot takes its own shortest path and collisions pile up (red circles). Right: prioritized planning, no collisions.*
+
+## Summary
+
+In our experiment, the optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
+
+This supports the project's working conclusion:
+
+> **Use fast prioritized planning instead of optimal search, and cover its weaknesses with warehouse design and by changing the planning order.**
+
+## Team
+
+| Member | Responsibility |
+| --- | --- |
+| 유현석 | Project lead; algorithm review, independent verification and explanation |
+| LIU Zhenyi | Implementation, experiments and demo animation |
+| 정고은 | Company case analysis, results analysis, recorded video |
+
+Presentation: 정고은 and 유현석.
+
+## The problem
+
+Robots move on a grid. At each time step a robot moves one cell up, down, left or right, or waits. A plan is legal only if
+
+- no two robots are in the same cell at the same time (*vertex conflict*), and
+- no two robots swap cells in one step (*swap conflict*).
+
+A robot that has finished parks on its goal and keeps occupying it. The cost of a plan is the **sum of the times at which robots reach their goals for the last time**. This problem is called multi-agent path finding (MAPF).
+
+## Methods compared
+
+| Method | Idea | Optimal? |
+| --- | --- | --- |
+| Independent BFS | Each robot takes its own shortest path and ignores the others | No, and usually collides (baseline only) |
+| Joint A* | A* over the combined positions of all robots | Yes |
+| Prioritized planning (PP) | Plan robots one at a time with space-time A*; later robots avoid the paths already reserved | No |
+| PP, failed robot first | When a robot cannot be planned, move it to the front and replan everyone | No |
+| PP, random shuffle | When a robot cannot be planned, shuffle the order and replan | No |
+
+An independent **conflict-based search (CBS)** solver was also written for verification and used to prove optima beyond the reach of Joint A*.
+
+## Experiment
+
+- 12 × 20 grid with one-cell-wide aisles and 45 recessed station bays.
+- Two layouts:
+  - **Aisle**: starts and goals are random aisle cells, so a parked robot can block a corridor.
+  - **Warehouse**: starts and goals are station bays off the aisles.
+- 2 to 20 robots (even numbers), 20 instances per size and layout: 400 instances × 5 methods = 2,000 result rows. Joint A* is not run at sizes above its first timeout (300 rows marked as skipped), so 1,700 runs were executed.
+- 10-second limit per run. Fixed seed (20261029), so the instances are identical on every run. A full re-run on a second machine gave the same result for every row; only the runtimes differed.
+
+## Results
+
+### 1. Optimal search runs out of time after a handful of robots
+
+![Runtime](outputs/runtime.png)
+
+| Layout | Joint A*: first size with a timeout | Joint A* median time at that size | Fixed-order PP at 20 robots: median time, plans found |
+| --- | --- | --- | --- |
+| Aisle | 4 robots (1 of 20 timed out) | 0.079 s | 0.070 s, 0 of 20 |
+| Warehouse | 6 robots (4 of 20 timed out) | 0.68 s | 0.016 s, 18 of 20 |
+
+Medians include timed-out and failed runs. After the first timeout, larger sizes are skipped for Joint A*, so the experiment does not measure how much longer it would take beyond that point. On the aisle layout PP is fast but often fails; section 3 covers that.
+
+With k robots, Joint A* must consider up to 5^k combined moves at every step (each robot moves in one of four directions or waits), so each extra robot multiplies the work. PP searches for one robot at a time, so adding a robot adds one more search instead.
+
+### 2. PP gives up some cost, and more as the floor gets busier
+
+![Cost gap against CBS optima](analysis/cbs_gap.png)
+
+Gap = how much higher PP's total cost is than the proven optimum. With CBS, we proved optima for 149 instances (Joint A* alone: 95). A gap can only be measured where PP also found a plan, so the number of gaps can be smaller than the number of proven optima.
+
+| Layout | Robots | Proven optima | Gaps measured | Fixed-order PP median gap | Maximum gap |
+| --- | --- | --- | --- | --- | --- |
+| Warehouse | 2 | 20/20 | 20 | 0% | 3.9% |
+| Warehouse | 4 | 20/20 | 20 | 0% | 6.7% |
+| Warehouse | 6 | 20/20 | 20 | 0.5% | 16.3% |
+| Warehouse | 8 | 12/20 | 12 | 2.3% | 23.2% |
+| Warehouse | 10 | 12/20 | 12 | 5.4% | 10.0% |
+| Aisle | 2 | 20/20 | 20 | 0% | 10.8% |
+| Aisle | 4 | 19/20 | 17 | 0% | 35.0% |
+| Aisle | 6 | 13/20 | 12 | 1.7% | 44.9% |
+| Aisle | 8 | 7/20 | 7 | 9.3% | 33.3% |
+
+For small fleets PP is usually optimal or close to it, but the typical gap grows with the number of robots and single instances can be far worse. **Caveat:** at larger sizes CBS only finishes the easier instances, so these gaps are probably *underestimates* there. Sizes with fewer than 5 proven optima are left out of the plot. Full data: [`analysis/cbs_gap.csv`](analysis/cbs_gap.csv).
+
+### 3. PP succeeds far more often when goals are in side bays
+
+![Success rate](outputs/success.png)
+
+| Layout | Fixed-order PP success |
+| --- | --- |
+| Aisle | 78 / 200 (39.0%) |
+| Warehouse | 193 / 200 (96.5%) |
+
+On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
+
+### 4. Changing the planning order rescues most failures
+
+| Layout | Fixed order | Failed robot first | Random shuffle |
+| --- | --- | --- | --- |
+| Aisle | 78 / 200 | 185 / 200 | 133 / 200 |
+| Warehouse | 193 / 200 | 200 / 200 | 200 / 200 |
+
+Fixed-order PP failed on 129 instances. Moving the failed robot to the front solved 114 of them; random shuffling solved 62. Neither variant failed on an instance that fixed-order PP solved. Reordering does not fix everything: on the aisle layout with 20 robots, the failed-robot-first variant still failed on 9 of 20 instances, and its median time rose to 2.1 s because of repeated replanning. In a separate study with five orders per instance, the order changed whether planning succeeded on 90 of 400 instances and changed the cost on 222.
+
+## Verification
+
+The experiment code was checked by separately written code (see [`verification/README.md`](verification/README.md)):
+
+- **Full re-run on a second machine:** all 2,000 rows have the same success values and costs; only runtimes differ ([comparison](verification/results/rerun_comparison.txt)).
+- **Independent validator:** all 1,484 returned plans re-checked, no mismatch.
+- **Independent CBS:** all 95 Joint A* optima reproduced exactly; PP was never below an optimum.
+- **Stress test:** 400 random instances on small crowded grids, no disagreement.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `mapf.py` | Grid, BFS, space-time A*, Joint A*, PP and its reordering variants, validator |
+| `run_project.py`, `run.py`, `order_study.py`, `report.py` | Experiment pipeline |
+| `outputs/` | Results of the main run (CSV, saved paths, plots, `EXPERIMENT_REPORT.md`) |
+| `analysis/` | Cost gap against CBS optima |
+| `presentation/` | Side-by-side animation for the talk |
+| `verification/` | Independent checks and the reference CBS |
+| `tests/` | Unit and pipeline tests |
+| [`docs/TECHNICAL.md`](docs/TECHNICAL.md) | Full technical documentation: data format, method details, metrics |
+
+## How to run
+
+Python 3.10 or later.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v
-python run_project.py
+python run_project.py                 # tests + main experiment + order study (several minutes)
+python analysis/cbs_gap.py            # CBS optima and cost-gap plot (slow: runs CBS on every instance)
+python presentation/side_by_side.py   # side-by-side GIF
 ```
 
-On Windows, use `py` if `python` is unavailable. On macOS/Linux, use `python3` if necessary.
+Quick check: `python run.py --quick --output quick_outputs`.
 
-Running `python run_project.py` executes the tests, main experiment, and planning-order experiment. It generates `outputs/results.csv`, `runtime.png`, `success.png`, `cost_gap.png`, `demo.gif`, the original instances, and execution metadata. The package includes results from an actual run. The English experiment report is generated from current CSV data after each run; the planning-order study refreshes it again with its own results. A report is saved in the output folder, and the project-root report is also updated when using the default `outputs` folder. Running the project again overwrites the corresponding output files.
+## AI usage
 
-For a quick check:
-
-```bash
-python run.py --quick --output quick_outputs
-```
-
-To run the planning-order experiment separately after the main experiment:
-
-```bash
-python order_study.py
-```
-
-This generates `outputs/order_sensitivity.csv`. Each instance is tested with five planning-order trials, including the fixed order. The remaining trials are performed even if the first order succeeds. Repeated orders may occur, particularly with small numbers of robots. These are five trials, not necessarily five distinct permutations.
-
-To regenerate the plots from an existing CSV:
-
-```bash
-python run.py --plot-only
-```
-
-## Project Goals
-
-- **Q1: Why is optimal planning unsuitable for large robot fleets?** Compare the running times of Joint A* and prioritized planning (PP).
-- **Q2: How much solution quality is lost by using a faster method?** Compare costs only when a proven optimum is available for the same instance.
-- **Q3: Does warehouse endpoint design make PP more reliable?** Compare success rates between aisle and warehouse instances.
-- **Q4: Why change the planning priorities?** Compare fixed-order PP, failed-robot promotion, random reordering, and a separate planning-order sensitivity experiment.
-
-Expected outcomes are hypotheses to test. This project does not assume that PP always has a small optimality gap or that warehouse instances always succeed.
-
-## Files
-
-| File | Purpose |
-| --- | --- |
-| `mapf.py` | Data interface, map generation, BFS, space-time A*, Joint A*, PP, two reordering strategies, and a reference validator |
-| `run_project.py` | Runs the tests, main experiment, and planning-order experiment with one command |
-| `run.py` | Batch experiments, CSV output, three plots, and GIF generation |
-| `order_study.py` | Changes only the PP planning order while keeping each instance fixed |
-| `tests/test_mapf.py` | Tests for the five specified examples, edge cases, and optimality |
-| `outputs/` | Generated experimental results |
-| `AI_USAGE.md` | AI assistance disclosure and concepts that students should understand |
-| `report.py` | Generates the English report from current experimental data |
-| `EXPERIMENT_REPORT.md` | Automatically updated interpretation of the latest default-output run |
-
-## Data Interface
-
-Coordinates use zero-based `(row, column)` indexing. `#` represents an impassable shelf, `.` an aisle, and `S` a traversable workstation. At each time step, a robot may move one cell up, down, left, or right, or wait in place. The grid is rectangular. Start cells are distinct, and goal cells are distinct.
-
-```python
-from mapf import solve, validate
-
-instance = {
-    'grid': ['...', '...'],
-    'starts': [(0, 0), (0, 2)],
-    'goals': [(0, 2), (0, 0)],
-}
-result = solve(instance, time_limit=10, method='pp', seed=42)
-# {'success': ..., 'paths': ..., 'runtime': ..., 'status': ...,
-#  'attempts': ..., 'order': ...}
-if result['paths'] is not None:
-    report = validate(instance, result['paths'])
-```
-
-`paths[i][t]` is the position of robot `i` at time `t`. Paths may have different lengths. After its path ends, a robot permanently occupies its final cell.
-
-`solve()['success']` indicates that the solver returned paths. The main experiment validates these paths before recording the final `success` value in the CSV. Independent BFS intentionally serves as an uncoordinated baseline; paths containing collisions do not count as successful solutions.
-
-Team members may replace `validate` with an independently implemented validator for cross-checking. The included validator supports development checks and the experimental pipeline; it does not replace the independent validation assigned to another team member.
-
-## Methods
-
-- **`independent`**: Each robot independently finds a shortest path using BFS, without coordinating with other robots.
-- **`joint_astar`**: A state contains all robot positions and flags indicating which robots have permanently finished. The search enumerates joint actions and rejects vertex and swap conflicts. Its admissible heuristic is the sum of the individual static BFS distances to the goals. It minimizes the sum of final arrival times. A result is considered proven optimal only when its status is `optimal`.
-- **`pp`**: Robots are planned sequentially in index order using space-time A*. Later robots avoid the vertex occupancies, reverse-edge conflicts, and permanent goal occupancies of previously planned robots. This greedy method does not guarantee global optimality or success on every solvable instance.
-- **`pp_promote`**: After a planning failure, the failed robot is moved to the front, and all paths are replanned. Random reordering breaks cycles when an order repeats.
-- **`pp_shuffle`**: After a planning failure, the order is randomly shuffled, and all paths are replanned.
-
-Each reordering method allows up to 32 attempts within a shared 10-second budget per solver run. `attempt_limit` means that the retry limit was reached; it does not prove that the instance has no solution. For PP, `blocked` means only that the current planning order could not produce a solution.
-
-Joint A* explicitly handles robots that reach a goal and later leave it. A robot may permanently finish, after which it cannot move, or remain active and pay a cost for each time step. Waiting at a goal cannot always be assigned zero cost: doing so would underestimate the final arrival time if the robot later left the goal.
-
-## Experimental Design
-
-The default map has 12 rows and 20 columns. Four one-cell-wide horizontal aisles (rows 1, 4, 7, and 10) are joined by one-cell-wide vertical aisles at columns 0 and 19. Shelf cells fill the remaining space except for 45 recessed station/pickup bays, including stations on the top and bottom boundaries. Every bay has exactly one adjacent aisle cell. No traversable 2x2 square exists, including station cells.
-
-- **Aisle instances**: Distinct start and goal cells are randomly sampled from aisle cells. A parked robot may obstruct traffic.
-- **Warehouse instances**: Start and goal cells are sampled only from recessed station/pickup bays. These model stopping locations at boundary workstations or in shelf areas. Each bay is accessible from one adjacent aisle and does not lie on a through route.
-- Robot counts are `k = 2, 4, ..., 20`, with 20 instances per robot count and layout, producing 400 instances.
-- Five methods are included for every instance, producing 2,000 CSV records, including explicitly marked skipped runs.
-- Random seeds are determined by the base seed, layout, robot count, and instance index. All methods receive exactly the same instances.
-- Each solver run has a 10-second limit. The search frequently checks a monotonic clock. This is a cooperative time limit, rather than operating-system-enforced process termination. Initialization or the final operation may cause a small overrun. Results exceeding the solver budget do not count as successful; validation is performed separately.
-- **For each layout, Joint A* completes every instance at the current robot count, even after the first timeout. Only larger robot counts are skipped.** Timeouts are recorded as actual timeouts. Runs at larger skipped sizes are marked `skipped_after_timeout`; they are not treated as executed failures or assigned fabricated 10-second runtimes. Skipped runs are excluded from plotted success rates and runtime medians. See `metadata.json` for the stopping instance.
-- This is a small-scale implementation of published principles, not a reproduction of Amazon's actual maps, code, or thousand-robot performance.
-
-The space-time A* horizon is the latest end time among previously planned paths plus the number of traversable cells. After all previously planned robots have parked, the remaining problem is a static graph. If the goal is reachable, a simple path requires fewer steps than the number of traversable cells. This horizon is therefore sufficient for the fixed set of previously planned paths.
-
-## Metrics
-
-- **Vertex conflicts**: Two robots occupy the same cell at the same time. Counted per robot pair and time step.
-- **Swap conflicts**: Two robots exchange two distinct positions between consecutive time steps. Counted per robot pair and transition.
-- **Cost**: The sum of the times at which each robot reaches its goal for the final time and never leaves again. Waiting before final arrival is included. Repeated goal positions at the end of a path do not add cost.
-- **Success rate**: The proportion of executed runs that produce legal, collision-free paths within the time limit. Skipped runs are excluded from the denominator.
-- **Runtime plot**: Median solver runtime across executed runs, including successful runs, failures, and timeouts.
-- **Cost-gap plot**: Uses only matched instances for which Joint A* has established the optimum and the compared method succeeds. The gap is `100 * (cost / optimum - 1)`. Different methods may have different numbers of matched successful instances. Percentage gaps are not calculated when the optimum is zero.
-- **Independent baseline costs**: Costs of paths containing collisions are retained only for diagnosis and are not treated as valid solution-quality comparisons against the optimum.
-
-`results.csv` records the layout, robot count, instance ID, seed, method, validated success, status, solver runtime, cost, both conflict counts, number of attempts, final planning order, optimal cost, and percentage cost gap. The original instances are stored in `instances.json`. Coordinate arrays loaded from JSON can be converted to tuples. `plans.jsonl` stores returned paths for each instance/method, so a teammate can independently validate the actual solutions. Join the two files using `instance_id` (the corresponding instance field is `id`).
-
-## Animation
-
-`demo.gif` intentionally demonstrates collisions in the independent BFS baseline. Robots have different colors, crosses indicate their goals, and red circles mark vertex-conflict cells or both endpoints of a swap conflict at the current time step. The title displays the current time. This illustrates a failure of the uncoordinated baseline; it is not evidence of PP failure.
-
-## Configurable Parameters
-
-```bash
-python run.py --instances 20 --max-robots 20 --time-limit 10 --seed 20261029 --attempts 32 --output outputs
-```
-
-Run the tests before conducting the full experiment. Runtime measurements vary across machines. For a consistent comparison, run all methods on the same machine and minimize other computationally intensive activity.
-
-## Independent Verification
-
-The `verification/` folder re-checks the saved results with separately written code: its own validator for every returned path, an independent CBS solver for every proven optimum, a stress test on small crowded grids, and a full re-run on a second machine. See [`verification/README.md`](verification/README.md).
+The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md`](AI_USAGE.md)). The verification code, the CBS analysis and the side-by-side animation were written with the help of Claude. All numbers in this README come from actual runs saved in this repository; team members reviewed and re-ran the code.
 
 ## References
 
-This implementation was independently written from the method descriptions in the team proposal. It does not copy a paper's implementation or company code.
-
-- Standley (2010), *Finding Optimal Solutions to Cooperative Pathfinding Problems*.
 - Silver (2005), *Cooperative Pathfinding*.
+- Standley (2010), *Finding Optimal Solutions to Cooperative Pathfinding Problems*.
+- Sharon et al. (2015), *Conflict-Based Search for Optimal Multi-Agent Pathfinding*.
 - Bennewitz, Burgard & Thrun (2002), *Finding and Optimizing Solvable Priority Schemes for Decoupled Path Planning Techniques for Teams of Mobile Robots*.
 - Čáp et al. (2015), *Prioritized Planning Algorithms for Trajectory Coordination of Multiple Mobile Robots*.
 
-The algorithm names correspond to those in the proposal. These are educational implementations and do not claim to reproduce every optimization or guarantee described in the papers.
-
-## Regenerating the English Report
-
-```bash
-python report.py --output outputs --include-order
-```
-
-Use `--include-order` only when `order_sensitivity.csv` belongs to the current main experiment. `run_project.py` handles this sequence automatically. A custom or quick output folder receives its own report without overwriting the main project report.
+This is a small-scale educational study of published principles. It does not reproduce any company's maps, code or fleet sizes.

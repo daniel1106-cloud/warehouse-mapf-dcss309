@@ -1,0 +1,9 @@
+Row-level comparison of outputs/results.csv (original run) with the re-run on a second machine
+rows original: 2000  rows re-run: 2000  same keys: True
+rows with different success: 0
+rows with different status: 0
+rows with different sum_of_costs: 0
+rows with different vertex_conflicts: 0
+rows with different swap_conflicts: 0
+rows with different optimal_cost: 0
+total solver runtime (s): original 377.6, re-run 439.9

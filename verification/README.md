@@ -26,7 +26,7 @@ python cbs_reach.py ../outputs 5 10
 
 ## Results (2026-11-02)
 
-**1. Full re-run on a second machine** (Linux, Python 3, default settings, `python run_project.py`): all 15 tests passed. Compared with the original run in `outputs/`, the 400 instances are identical, and all 2,000 result rows have the same success value and the same cost. Joint A* stopped at the same instances (aisle `aisle-k4-001`, warehouse `warehouse-k6-008`). The planning-order study gave identical success values and costs. Only runtimes differ (total 445 s vs. 381 s). Summary files: `results/rerun/`.
+**1. Full re-run on a second machine** (Linux, Python 3, default settings, `python run_project.py`): all 15 tests passed. Compared with the original run in `outputs/`, the 400 instances are identical, and all 2,000 result rows have the same success value and the same cost. Joint A* stopped at the same instances (aisle `aisle-k4-001`, warehouse `warehouse-k6-008`). The planning-order study gave identical success values and costs. Only runtimes differ (total 445 s vs. 381 s). Summary files: `results/rerun/`; row-by-row comparison: `results/rerun_comparison.txt` (it sums solver runtimes only, so its totals are slightly lower).
 
 **2. `check_results.py`** (`results/check_results_rerun.txt`)
 
