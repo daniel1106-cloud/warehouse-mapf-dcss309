@@ -67,14 +67,40 @@ class Reservations:
         self.max_end = max(self.max_end, end)
 
 
-def single_reserved(graph, start, goal, res, deadline):
-    """Line-for-line counterpart of mapf.single_reserved."""
+def cut_off(graph, start, goal, res):
+    """True if the goal cannot be reached from the start once every earlier robot is parked.
+
+    Parked robots are treated as walls. This is a cheap static test (one BFS). It is
+    conservative: a robot could in principle reach its goal before the wall closes, so a
+    True here does not prove that space-time A* would fail.
+    """
+    walls = res.parked
+    seen = {start}; queue = [start]; head = 0
+    while head < len(queue):
+        p = queue[head]; head += 1
+        if p == goal:
+            return False
+        for q in graph.steps[p]:
+            if q not in seen and q not in walls:
+                seen.add(q); queue.append(q)
+    return True
+
+
+def single_reserved(graph, start, goal, res, deadline, cutoff_check=False):
+    """Line-for-line counterpart of mapf.single_reserved.
+
+    cutoff_check=True (not in mapf.py) adds one extra test before the search: if the
+    robot is cut off by parked earlier robots, report "cut_off" at once instead of
+    searching the whole space-time horizon.
+    """
     d = graph.distances(goal)
     if start not in d:
         return None, "unreachable"
     horizon = res.max_end + res.n_cells
     if start in res.starts:
         return None, "blocked"
+    if cutoff_check and cut_off(graph, start, goal, res):
+        return None, "cut_off"
     vertex, edge, parked, moves = res.vertex, res.edge, res.parked, graph.moves
     goal_free_after = res.last_visit.get(goal, -1)
     serial = count(); root = (start, 0); parent = {root: None}; heap = [(d[start], next(serial), root)]
@@ -97,10 +123,10 @@ def single_reserved(graph, start, goal, res, deadline):
     return None, "blocked"
 
 
-def pp(instance, deadline, order, graph):
+def pp(instance, deadline, order, graph, cutoff_check=False):
     res = Reservations(graph.n_cells); result = [None] * len(order)
     for i in order:
-        path, status = single_reserved(graph, instance["starts"][i], instance["goals"][i], res, deadline)
+        path, status = single_reserved(graph, instance["starts"][i], instance["goals"][i], res, deadline, cutoff_check)
         if path is None:
             return None, status, i
         res.add(path); result[i] = path
@@ -108,14 +134,20 @@ def pp(instance, deadline, order, graph):
 
 
 def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
-    """Same interface and return value as mapf.solve, for the three PP methods."""
+    """Same interface and return value as mapf.solve, for the three PP methods.
+
+    Two extra methods, not in mapf.py, add the cut-off test: "pp_cutoff" (fixed order)
+    and "pp_promote_cutoff" (failed robot first).
+    """
     begun = time.perf_counter(); deadline = begun + time_limit; paths = None; attempts = 1
     order = list(range(len(instance["starts"])))
     graph = Graph(instance["grid"])
+    cutoff_check = method.endswith("_cutoff")
+    base = method[:-len("_cutoff")] if cutoff_check else method
     try:
-        if method == "pp":
-            paths, status, _ = pp(instance, deadline, order, graph)
-        elif method in ("pp_promote", "pp_shuffle"):
+        if base == "pp":
+            paths, status, _ = pp(instance, deadline, order, graph, cutoff_check)
+        elif base in ("pp_promote", "pp_shuffle"):
             rng = random.Random(seed); seen = set(); status = "attempt_limit"
             for attempts in range(1, max_attempts + 1):
                 check(deadline)
@@ -123,10 +155,10 @@ def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
                 if key in seen:
                     rng.shuffle(order); key = tuple(order)
                 seen.add(key)
-                paths, status, failed = pp(instance, deadline, order, graph)
+                paths, status, failed = pp(instance, deadline, order, graph, cutoff_check)
                 if paths is not None:
                     break
-                if method == "pp_promote":
+                if base == "pp_promote":
                     order.remove(failed); order.insert(0, failed)
                 else:
                     rng.shuffle(order)
