@@ -13,6 +13,7 @@ Outputs: scale/endpoints_results.csv, scale/endpoints.png
          cut-off test of run_cutoff.py, on the same instances)
 Usage:   python scale/run_endpoints.py
          python scale/run_endpoints.py --cutoff shelf_area   (and open_area)
+         python scale/run_endpoints.py --matched   (control: open-area goals from 2,649 cells)
          python scale/run_endpoints.py --plot-only
 """
 import csv
@@ -31,21 +32,32 @@ from maps import load_map  # noqa: E402
 from run_scale import MAP, check_plan, lower_bound  # noqa: E402
 
 SHELF_COLS = (26, 134)  # first and last column containing shelves
+MATCHED_SEED = 20261113  # picks the open-area subset for the control setting
 FIELDS = ["goal_area", "num_robots", "instance_id", "seed", "solver", "success", "status", "runtime_sec",
           "attempts", "sum_of_costs", "lower_bound", "gap_upper_pct"]
 
 
-def make_instances(sizes=(100, 200, 300), per_size=10, seed0=20261112):
-    """Yield (area, k, j, seed, instance) in run order. Same instances on every call."""
+def make_instances(sizes=(100, 200, 300), per_size=10, seed0=20261112, matched=False):
+    """Yield (area, k, j, seed, instance) in run order. Same instances on every call.
+
+    matched=True yields only the control setting open_matched: goals from a fixed random
+    subset of the open areas with as many cells as the shelf area (2,649), so that both
+    goal areas have the same number of candidate cells.
+    """
     grid = load_map(MAP)
     free = mapf.cells(grid)
     areas = {
         "shelf_area": [p for p in free if SHELF_COLS[0] <= p[1] <= SHELF_COLS[1]],
         "open_area": [p for p in free if not SHELF_COLS[0] <= p[1] <= SHELF_COLS[1]],
     }
+    if matched:
+        subset = random.Random(MATCHED_SEED).sample(areas["open_area"], len(areas["shelf_area"]))
+        areas = {"shelf_area": None, "open_area": None, "open_matched": sorted(subset)}
     for k in sizes:
         for j in range(per_size):
             for a, (area, pool) in enumerate(areas.items()):
+                if pool is None:
+                    continue
                 seed = seed0 + 1000 * k + 100 * a + j
                 rng = random.Random(seed)
                 goals = rng.sample(pool, k)
@@ -54,13 +66,13 @@ def make_instances(sizes=(100, 200, 300), per_size=10, seed0=20261112):
                 yield area, k, j, seed, dict(grid=grid, starts=starts, goals=goals)
 
 
-def run(solvers=("pp", "pp_promote"), target="endpoints_results.csv", only_area=None, limit=60):
+def run(solvers=("pp", "pp_promote"), target="endpoints_results.csv", only_area=None, limit=60, matched=False):
     graph = fast_pp.Graph(load_map(MAP))
     rows = []
     with (HERE / target).open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
-        for area, k, j, seed, inst in make_instances():
+        for area, k, j, seed, inst in make_instances(matched=matched):
             if only_area and area != only_area:
                 continue
             lb = lower_bound(inst, graph)
@@ -116,6 +128,9 @@ def plot(rows, target):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--matched":
+        run(("pp", "pp_promote", "pp_promote_cutoff"), "endpoints_matched.csv", matched=True)
+        sys.exit()
     if len(sys.argv) > 2 and sys.argv[1] == "--cutoff":
         area = sys.argv[2]
         run(("pp_promote_cutoff",), f"endpoints_cutoff_{area.split('_')[0]}.csv", area)
