@@ -91,7 +91,7 @@ def plot(rows, target):
     sizes = sorted({int(r["num_robots"]) for r in rows})
     style = {"shelf_area": ("Goals in shelf aisles", "#dc2626", "o"),
              "open_area": ("Goals in open areas", "#16a34a", "s")}
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 6))
     for area, (label, color, marker) in style.items():
         names = {"pp": ("fixed order", "-"), "pp_promote": ("failed robot first", "--"),
                  "pp_promote_cutoff": ("failed robot first + cut-off test", ":")}
@@ -107,7 +107,8 @@ def plot(rows, target):
     axes[0].set(title="Plans found", ylabel="Success rate (%)", ylim=(-5, 105))
     axes[1].set(title="Median planning time (Python; a timeout counts as 60 s)", ylabel="Seconds")
     for ax in axes:
-        ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.grid(alpha=.2); ax.legend(fontsize=8)
+        ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.grid(alpha=.2)
+        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=1, frameon=False)
     fig.suptitle(f"Where robots stop: {MAP}, starts random, 10 instances per point")
     fig.tight_layout()
     fig.savefig(target, dpi=160)

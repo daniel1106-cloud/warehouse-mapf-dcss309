@@ -12,7 +12,7 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 
 In our experiment, the optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
 
-On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot.
+On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. When only the goals were moved out of the shelf aisles into open areas, fixed-order PP went from 0 to 16 of 20 instances solved at 200 and 300 robots.
 
 This supports the project's working conclusion:
 
@@ -130,6 +130,8 @@ We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161
 
 - PP still plans hundreds of robots in seconds to tens of seconds, in Python. The upper bound on its cost gap grows with crowding (the bound itself probably loosens as robots crowd).
 - Fixed-order PP failed 18 times (14 timeouts, 4 `blocked`). In all 14 timeouts, the robot being planned was cut off from its goal by robots parked before it, the same mechanism as the aisle layout above. Failed-robot-first rescued only 2 runs: after a timeout there was no time left to try another order.
+- **Follow-up 1, where robots stop:** with only the goals moved into the shelf aisles, fixed-order PP solved 0 of 20 instances with 200 or 300 robots; with the goals in the open side areas, 16 of 20, although those trips are longer. Reordering did not make up for it.
+- **Follow-up 2, detect failure early:** a quick test for robots cut off by parked robots lets failed-robot-first try other orders before the time runs out: 44 → 49 of 60 instances solved. The test is conservative and fired on 15 of the 42 instances fixed-order PP had solved, which roughly doubled the planning time at 200 to 250 robots.
 - To make this size feasible, PP was re-implemented with hash-table reservations ([`scale/fast_pp.py`](scale/fast_pp.py)). It returns exactly the same paths as `mapf.py` on all 1,200 PP runs of the main experiment and on 12 runs on the benchmark map.
 
 Details, limits and how to run: [`scale/README.md`](scale/README.md).
