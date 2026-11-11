@@ -86,16 +86,20 @@ def cut_off(graph, start, goal, res):
     return True
 
 
-def single_reserved(graph, start, goal, res, deadline, cutoff_check=False):
+def single_reserved(graph, start, goal, res, deadline, cutoff_check=False, avoid=frozenset()):
     """Line-for-line counterpart of mapf.single_reserved.
 
     cutoff_check=True (not in mapf.py) adds one extra test before the search: if the
     robot is cut off by parked earlier robots, report "cut_off" at once instead of
     searching the whole space-time horizon.
+    avoid (not in mapf.py): cells the robot may never enter, used by revised PP for the
+    start cells of robots not planned yet.
     """
     d = graph.distances(goal)
     if start not in d:
         return None, "unreachable"
+    if goal in avoid:
+        return None, "blocked"
     horizon = res.max_end + res.n_cells
     if start in res.starts:
         return None, "blocked"
@@ -112,7 +116,7 @@ def single_reserved(graph, start, goal, res, deadline, cutoff_check=False):
             continue
         t1 = t + 1
         for q in moves[p]:
-            if q not in d:
+            if q not in d or q in avoid:
                 continue
             # vertex conflict, parked robot, or swap with an earlier robot
             if (q, t1) in vertex or parked.get(q, INF) <= t1 or (q, p, t) in edge:
@@ -123,10 +127,15 @@ def single_reserved(graph, start, goal, res, deadline, cutoff_check=False):
     return None, "blocked"
 
 
-def pp(instance, deadline, order, graph, cutoff_check=False):
+def pp(instance, deadline, order, graph, cutoff_check=False, revised=False):
+    """revised=True gives revised PP (RPP, Cap et al. 2015): each robot also stays off the
+    start cells of all robots planned after it, which are still standing there."""
     res = Reservations(graph.n_cells); result = [None] * len(order)
+    later = {instance["starts"][i] for i in order} if revised else set()
     for i in order:
-        path, status = single_reserved(graph, instance["starts"][i], instance["goals"][i], res, deadline, cutoff_check)
+        later.discard(instance["starts"][i])
+        path, status = single_reserved(graph, instance["starts"][i], instance["goals"][i], res, deadline,
+                                       cutoff_check, frozenset(later))
         if path is None:
             return None, status, i
         res.add(path); result[i] = path
@@ -136,17 +145,20 @@ def pp(instance, deadline, order, graph, cutoff_check=False):
 def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
     """Same interface and return value as mapf.solve, for the three PP methods.
 
-    Two extra methods, not in mapf.py, add the cut-off test: "pp_cutoff" (fixed order)
-    and "pp_promote_cutoff" (failed robot first).
+    Extra methods, not in mapf.py: "pp_cutoff" and "pp_promote_cutoff" add the cut-off
+    test; "rpp" and "rpp_promote" are revised PP (see pp()).
     """
     begun = time.perf_counter(); deadline = begun + time_limit; paths = None; attempts = 1
     order = list(range(len(instance["starts"])))
     graph = Graph(instance["grid"])
     cutoff_check = method.endswith("_cutoff")
     base = method[:-len("_cutoff")] if cutoff_check else method
+    revised = base.startswith("rpp")
+    if revised:
+        base = base[1:]
     try:
         if base == "pp":
-            paths, status, _ = pp(instance, deadline, order, graph, cutoff_check)
+            paths, status, _ = pp(instance, deadline, order, graph, cutoff_check, revised)
         elif base in ("pp_promote", "pp_shuffle"):
             rng = random.Random(seed); seen = set(); status = "attempt_limit"
             for attempts in range(1, max_attempts + 1):
@@ -155,7 +167,7 @@ def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
                 if key in seen:
                     rng.shuffle(order); key = tuple(order)
                 seen.add(key)
-                paths, status, failed = pp(instance, deadline, order, graph, cutoff_check)
+                paths, status, failed = pp(instance, deadline, order, graph, cutoff_check, revised)
                 if paths is not None:
                     break
                 if base == "pp_promote":

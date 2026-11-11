@@ -29,7 +29,8 @@ def load_project(path):
 def main(project_path, trials=400, seed=7):
     J = load_project(project_path)
     rng = random.Random(seed)
-    s = dict(trials=0, equal_optimum=0, different_optimum=0, reference_unsolved=0,
+    s = dict(trials=0, equal_optimum=0, different_optimum=0, both_no_plan=0, reference_timeout=0,
+             joint_none_reference_found=0,
              joint_timeout=0, joint_invalid=0, pp_invalid=0, pp_below_optimum=0)
     for trial in range(trials):
         grid = rng.choice(GRIDS)
@@ -48,14 +49,23 @@ def main(project_path, trials=400, seed=7):
         if joint["status"] == "timeout":
             s["joint_timeout"] += 1
             continue
-        if ref_paths is None or joint["paths"] is None:
-            s["reference_unsolved"] += 1
+        if joint["paths"] is None and ref_paths is None:
+            # Joint A* searched everything and found no plan; CBS also returned none
+            s["both_no_plan"] += 1
             continue
+        if joint["paths"] is None:
+            s["joint_none_reference_found"] += 1  # would be a disagreement
+            print("disagreement: Joint A* no plan, CBS found one:", inst)
+            continue
+        if ref_paths is None:
+            s["reference_timeout"] += 1  # CBS gave up in 5 s; Joint A* plan still validated below
         legal, v, sw, cost = my_validate(inst, joint["paths"])
         if not legal or v or sw:
             s["joint_invalid"] += 1
             continue
-        if cost == ref.soc(ref_paths):
+        if ref_paths is None:
+            pass
+        elif cost == ref.soc(ref_paths):
             s["equal_optimum"] += 1
         else:
             s["different_optimum"] += 1
@@ -67,7 +77,8 @@ def main(project_path, trials=400, seed=7):
             elif c2 < cost:
                 s["pp_below_optimum"] += 1
     print(s)
-    return s["different_optimum"] == s["joint_invalid"] == s["pp_invalid"] == s["pp_below_optimum"] == 0
+    return (s["different_optimum"] == s["joint_invalid"] == s["pp_invalid"] == s["pp_below_optimum"]
+            == s["joint_none_reference_found"] == 0)
 
 
 if __name__ == "__main__":

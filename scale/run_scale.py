@@ -12,6 +12,7 @@ Because optimum >= lower bound, cost / lower bound - 1 is an upper bound on PP's
 
 Outputs: scale/results.csv, scale/instances.json, scale/scale.png
 Usage:   python scale/run_scale.py [--quick]
+         python scale/run_scale.py --map warehouse-10-20-10-2-2   (second map: two-cell aisles)
 """
 import argparse
 import csv
@@ -159,7 +160,7 @@ def plot(rows, target):
     axes[2].set(title="Fixed-order PP cost above a lower bound on the optimum", ylabel="Upper bound on gap (%)")
     for ax in axes:
         ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.grid(alpha=.2); ax.legend(fontsize=8)
-    fig.suptitle(f"Prioritized planning on the {MAP} benchmark map (161 x 63), 10 instances per size")
+    fig.suptitle(f"Prioritized planning on the {MAP} benchmark map, 10 instances per size")
     fig.tight_layout()
     fig.savefig(target, dpi=160)
     plt.close(fig)
@@ -169,7 +170,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--plot-only", action="store_true")
+    ap.add_argument("--map", help="another map in scale/maps; results go to scale/<map>/ (100, 200, 300 robots)")
     a = ap.parse_args()
+    if a.map:
+        MAP = a.map
+        out = HERE / MAP; out.mkdir(exist_ok=True)
+        rows = run([100, 200, 300], 10, 60, 20261111, out)
+        plot(rows, out / "scale.png"); sys.exit()
     if a.plot_only:
         rows = list(csv.DictReader((HERE / "results.csv").open(encoding="utf-8")))
     elif a.quick:
