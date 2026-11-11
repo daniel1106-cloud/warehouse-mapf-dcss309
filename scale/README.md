@@ -89,9 +89,9 @@ Result 5 left open whether reordering fails at scale because of the method or be
 - **It also fires too often.** On the 42 instances that fixed-order PP solved, it reported `cut_off` on 15 (36%). On those instances the order changes for no reason.
 - **Net effect: 44 → 49 of 60.** With the test, failed-robot-first solved 7 instances it could not solve before (all of them timeouts, 100 to 250 robots) and lost 2 it had solved (250 and 300 robots), where the extra reorders ran out of time after 4 attempts. At 300 robots it solved 1 of 10 instead of 2. With 7 gained and 2 lost, the net gain is **not statistically significant** (McNemar exact p = 0.18; see [`../analysis/significance.txt`](../analysis/significance.txt)), so it shows a tendency, not an established improvement.
 - **Cost is about the same.** Where both variants succeeded, 15 instances ended with a different order; in 14 of them the cost changed, by less than 1 percentage point of the lower bound (10 lower, 4 higher).
-- **It costs time.** On instances both variants solved, the median time rose from 10.6 to 15.4 s at 200 robots and from 16.2 to 31.2 s at 250. Most of this comes from the extra reorders; where the test never fired, runs were about 5% slower (one extra search per robot).
+- **It costs time.** On instances both variants solved, the median time rose from 10.6 to 15.4 s at 200 robots and from 16.2 to 31.2 s at 250. Most of this comes from the extra reorders; where the test never fired, runs were about 5–8% slower (one extra search per robot).
 
-So reordering can help at scale only once failure is detected quickly, and this simple test trades false alarms for speed; on 60 instances the overall gain is within chance. The table comes from a run on its own. A first run, made in parallel with follow-up 1 on the same 2-core machine, gave exactly the same statuses and costs, with times within a few percent.
+So reordering can help at scale only once failure is detected quickly, and this simple test trades false alarms for speed; on 60 instances the overall gain is within chance. The table comes from a run on its own. A first run, made in parallel with follow-up 1 on the same 2-core machine, gave exactly the same statuses and costs; times differed by up to 15% (median under 1%).
 
 ## Second map: two-cell aisles
 
@@ -106,8 +106,8 @@ To check that the results are not specific to one map, [`run_scale.py --map`](ru
 | 300 | 886 | 10/10 | 1/10 | 31.9 s | 15.6% / 18.0% |
 
 - **The same pattern holds on a second map:** coordination is essential (hundreds of collisions without it), PP plans hundreds of robots in seconds to tens of seconds, and the upper bound on its cost gap grows with crowding (7.0% → 15.6%).
-- **With two-cell aisles PP never failed** (30 of 30), where the one-cell-aisle map gave 17 of 30 at the same robot counts. A parked robot in a two-cell aisle leaves room to pass.
-- **Limit:** this map is also larger (9,776 free cells against 5,699), so the same number of robots is less crowded: 300 robots here are about as dense as 175 on the first map, where PP solved 10 of 10 at 150 and 8 of 10 at 200. The comparison therefore does not isolate aisle width; it shows that the findings carry over to a second benchmark warehouse.
+- **With two-cell aisles PP never failed** (30 of 30), where the one-cell-aisle map gave 17 of 30 at the same robot counts, plausibly because a parked robot in a two-cell aisle leaves room to pass.
+- **Limit:** this map is also larger (9,776 free cells against 5,699), so the same number of robots is less crowded: in robots per free cell, 300 robots here are about as dense as 175 on the first map, where PP solved 10 of 10 at 150 and 8 of 10 at 200. The comparison therefore does not isolate aisle width; it shows that the findings carry over to a second benchmark warehouse.
 
 ## How the speed-up was checked
 

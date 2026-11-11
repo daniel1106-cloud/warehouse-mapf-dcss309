@@ -34,7 +34,7 @@ python cbs_reach.py ../outputs 5 10
 - 95 proven Joint A* optima: no PP result below the optimum.
 - All 95 optima recomputed with the reference CBS: 95 equal, 0 different.
 
-**3. `stress_test.py`** (`results/stress_test.txt`): in 354 of 400 instances both solvers returned a plan, with the same optimal cost every time. All Joint A* and PP plans were valid, and no PP plan had a cost below the optimum. In the other 46 instances, Joint A* finished its search and reported that no solution exists, and the reference CBS also returned no plan (`both_no_plan`). There was no case where CBS gave up while Joint A* found a plan (`reference_timeout` = 0), and none where Joint A* found no plan but CBS did.
+**3. `stress_test.py`** (`results/stress_test.txt`): in 354 of 400 instances both solvers returned a plan, with the same optimal cost every time. All Joint A* and PP plans were valid, and no PP plan had a cost below the optimum. In the other 46 instances, Joint A* finished its search and reported that no solution exists, and the reference CBS also returned no plan (`both_no_plan`). CBS returns no plan both when it proves there is none and when it runs out of time, so these 46 rest on Joint A*'s exhaustive search, not on independent confirmation. There was no case where CBS gave up while Joint A* found a plan (`reference_timeout` = 0), and none where Joint A* found no plan but CBS did.
 
 **4. `cbs_reach.py`** (`results/cbs_reach.csv`, 5 instances per size, 10 s per instance)
 
