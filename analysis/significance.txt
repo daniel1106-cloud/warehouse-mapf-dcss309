@@ -1,0 +1,17 @@
+Main experiment (12 x 20 map, 200 instances per layout)
+  fixed-order PP, aisle vs warehouse layout: 78/200 vs 193/200, Fisher exact p = 4.6e-39
+  aisle: fixed order vs failed robot first: 78 -> 185 of 200 (gained 107, lost 0), McNemar exact p = 1.2e-32
+  warehouse: fixed order vs failed robot first: 193 -> 200 of 200 (gained 7, lost 0), McNemar exact p = 0.016
+
+Benchmark map, where robots stop (10 instances per size and setting)
+  100 robots, fixed order, shelf aisles vs open areas: 7/10 vs 10/10, Fisher exact p = 0.21
+  100 robots, fixed order, shelf aisles vs open areas with 2,649 cells: 7/10 vs 10/10, Fisher exact p = 0.21
+  200 robots, fixed order, shelf aisles vs open areas: 0/10 vs 8/10, Fisher exact p = 0.00071
+  200 robots, fixed order, shelf aisles vs open areas with 2,649 cells: 0/10 vs 8/10, Fisher exact p = 0.00071
+  300 robots, fixed order, shelf aisles vs open areas: 0/10 vs 8/10, Fisher exact p = 0.00071
+  300 robots, fixed order, shelf aisles vs open areas with 2,649 cells: 0/10 vs 6/10, Fisher exact p = 0.011
+  200 and 300 robots, fixed order, shelf aisles vs open areas: 0/20 vs 16/20, Fisher exact p = 1.5e-07
+  200 and 300 robots, fixed order, shelf aisles vs open areas with 2,649 cells: 0/20 vs 14/20, Fisher exact p = 3.3e-06
+
+Benchmark map, cut-off test (same 60 instances)
+  failed robot first, without vs with cut-off test: 44 -> 49 of 60 (gained 7, lost 2), McNemar exact p = 0.18

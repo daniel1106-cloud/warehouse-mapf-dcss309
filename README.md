@@ -10,13 +10,15 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 
 ## Summary
 
-In our experiment, a basic optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. A stronger optimal solver, conflict-based search (CBS), went further but also stopped: within 10 s it solved none of 20 aisle instances with 12 robots and none of 20 warehouse instances with 14. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
+In our experiment, a basic optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. A stronger optimal solver, conflict-based search (CBS), went further but also stopped: within 10 s it solved none of 20 aisle instances with 12 robots and none of 20 warehouse instances with 14. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. On the side-bay layout, revised PP (one extra rule from Čáp et al., 2015) removed every remaining failure, as its theory predicts. Planning the failed robot first rescued most failures on this small map.
 
-On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. In a follow-up with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 instances at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20.
+On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. In a follow-up with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 instances at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20, and still 14 of 20 when the open areas were cut to the same number of cells. On a second benchmark map with two-cell aisles, PP solved all 30 instances with 100 to 300 robots. At this scale, changing the planning order helped little.
 
-This supports the project's working conclusion:
+Our conclusion:
 
-> **Use fast prioritized planning instead of optimal search, and cover its weaknesses with warehouse design and by changing the planning order.**
+> **Optimal planning stops at a few robots, so a fast method is needed. Prioritized planning stays fast at hundreds of robots, but whether it finds a plan depends mostly on the layout: where robots stop and how wide the aisles are. Changing the planning order helps on small instances, much less at scale.**
+
+What this does and does not show: we measured these methods on benchmark maps; we did not reproduce any company's system. Amazon Science (Brown, 2022) states that even state-of-the-art multi-agent planning cannot plan fast enough for a thousand or more robots, and the Kiva Systems paper (Wurman, D'Andrea & Mountz, 2008, written before Amazon bought Kiva in 2012) states that the drive units use a standard implementation of A*. Our results are consistent with that choice, but they do not show which algorithm any company uses today, and we did not compare with newer fast planners such as LaCAM or windowed planning.
 
 ## Team
 
@@ -150,6 +152,8 @@ We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161
 - **Follow-up 2, detect failure early:** a quick test for robots cut off by parked robots lets failed-robot-first try other orders before the time runs out: 44 → 49 of 60 instances solved (7 gained, 2 lost; not statistically significant, McNemar exact p = 0.18). The test is conservative and fired on 15 of the 42 instances fixed-order PP had solved, which made planning slower: on instances solved both ways, the median time rose from 10.6 to 15.4 s at 200 robots and from 16.2 to 31.2 s at 250.
 - To make this size feasible, PP was re-implemented with hash-table reservations ([`scale/fast_pp.py`](scale/fast_pp.py)). It returns exactly the same paths as `mapf.py` on all 1,200 PP runs of the main experiment and on 12 runs on the benchmark map.
 
+- **Second map:** on `warehouse-10-20-10-2-2` (same shelves, two-cell aisles, 9,776 free cells), fixed-order PP solved 30 of 30 instances with 100, 200 and 300 robots (one-cell-aisle map: 17 of 30). That map is also larger and so less crowded at the same robot count, so this does not isolate aisle width.
+
 Details, limits and how to run: [`scale/README.md`](scale/README.md).
 
 ## Verification
@@ -201,5 +205,7 @@ The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md
 - Stern et al. (2019), *Multi-Agent Pathfinding: Definitions, Variants, and Benchmarks* (source of the benchmark map).
 - Bennewitz, Burgard & Thrun (2002), *Finding and Optimizing Solvable Priority Schemes for Decoupled Path Planning Techniques for Teams of Mobile Robots*.
 - Čáp et al. (2015), *Prioritized Planning Algorithms for Trajectory Coordination of Multiple Mobile Robots*.
+- Wurman, D'Andrea & Mountz (2008), *Coordinating Hundreds of Cooperative, Autonomous Vehicles in Warehouses*, AI Magazine 29(1).
+- Brown (2022), *How Amazon robots navigate congestion*, Amazon Science, May 24, 2022.
 
 This is a small-scale educational study of published principles. It does not reproduce any company's maps, code or fleet sizes.
