@@ -12,7 +12,7 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 
 In our experiment, the optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
 
-On a standard benchmark warehouse map about 40 times larger, PP planned 200 robots in about 10 seconds even in plain Python, with a median cost no more than 17% above the optimum. It started failing often from 250 robots, again because robots parked in aisles cut others off.
+On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot.
 
 This supports the project's working conclusion:
 
@@ -119,16 +119,17 @@ Fixed-order PP failed on 129 instances. Moving the failed robot to the front sol
 
 We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161 × 63 cells, 5,699 free cells), with random starts and goals and 10 instances per size. The optimum cannot be computed at this size, so PP's cost is compared with a lower bound (the sum of each robot's own shortest-path length); the result is an upper bound on the real gap.
 
-| Robots | Collisions without coordination (median) | Fixed-order PP: plans found | Median time of successful runs | Cost above lower bound: median |
+| Robots | Collisions without coordination (median) | Fixed-order PP: plans found | Fixed-order PP: median time of successful runs | Cost above lower bound: median |
 | ---: | ---: | ---: | ---: | ---: |
 | 50 | 32 | 10/10 | 0.4 s | 3.0% |
 | 100 | 127 | 8/10 | 3.3 s | 12.1% |
+| 150 | 359 | 10/10 | 6.2 s | 14.1% |
 | 200 | 702.5 | 8/10 | 10.4 s | 17.0% |
 | 250 | 1,105.5 | 5/10 | 16.5 s | 20.0% |
 | 300 | 1,418.5 | 1/10 | 29.1 s | (1 run) |
 
-- PP still plans hundreds of robots in seconds, in Python. Its cost gap grows with crowding.
-- In all 14 timeouts, the robot being planned was cut off from its goal by robots parked before it, the same mechanism as the aisle layout above. Failed-robot-first rescued only 2 runs: after a timeout there was no time left to try another order.
+- PP still plans hundreds of robots in seconds to tens of seconds, in Python. The upper bound on its cost gap grows with crowding (the bound itself probably loosens as robots crowd).
+- Fixed-order PP failed 18 times (14 timeouts, 4 `blocked`). In all 14 timeouts, the robot being planned was cut off from its goal by robots parked before it, the same mechanism as the aisle layout above. Failed-robot-first rescued only 2 runs: after a timeout there was no time left to try another order.
 - To make this size feasible, PP was re-implemented with hash-table reservations ([`scale/fast_pp.py`](scale/fast_pp.py)). It returns exactly the same paths as `mapf.py` on all 1,200 PP runs of the main experiment and on 12 runs on the benchmark map.
 
 Details, limits and how to run: [`scale/README.md`](scale/README.md).

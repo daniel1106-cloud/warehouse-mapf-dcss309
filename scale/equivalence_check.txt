@@ -1,0 +1,14 @@
+main experiment: 1200/1200 PP runs identical (paths and status)
+  warehouse-10-20-10-2-1 k=25 #0 pp: mapf.py 1.57 s, fast 0.43 s
+  warehouse-10-20-10-2-1 k=25 #0 pp_promote: mapf.py 1.58 s, fast 0.41 s
+  warehouse-10-20-10-2-1 k=25 #1 pp: mapf.py 0.40 s, fast 0.16 s
+  warehouse-10-20-10-2-1 k=25 #1 pp_promote: mapf.py 0.47 s, fast 0.16 s
+  warehouse-10-20-10-2-1 k=25 #2 pp: mapf.py 0.51 s, fast 0.16 s
+  warehouse-10-20-10-2-1 k=25 #2 pp_promote: mapf.py 0.51 s, fast 0.15 s
+  warehouse-10-20-10-2-1 k=50 #0 pp: mapf.py 2.44 s, fast 0.45 s
+  warehouse-10-20-10-2-1 k=50 #0 pp_promote: mapf.py 2.20 s, fast 0.41 s
+  warehouse-10-20-10-2-1 k=50 #1 pp: mapf.py 1.67 s, fast 0.35 s
+  warehouse-10-20-10-2-1 k=50 #1 pp_promote: mapf.py 1.74 s, fast 0.34 s
+  warehouse-10-20-10-2-1 k=50 #2 pp: mapf.py 9.28 s, fast 1.24 s
+  warehouse-10-20-10-2-1 k=50 #2 pp_promote: mapf.py 9.06 s, fast 1.30 s
+real map: 12/12 runs identical
