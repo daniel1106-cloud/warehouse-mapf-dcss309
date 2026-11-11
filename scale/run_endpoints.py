@@ -9,7 +9,11 @@ cannot. Trip lengths differ between the two settings, so the lower bound per rob
 is reported too.
 
 Outputs: scale/endpoints_results.csv, scale/endpoints.png
+         scale/endpoints_cutoff_{shelf,open}.csv (--cutoff: failed robot first with the
+         cut-off test of run_cutoff.py, on the same instances)
 Usage:   python scale/run_endpoints.py
+         python scale/run_endpoints.py --cutoff shelf_area   (and open_area)
+         python scale/run_endpoints.py --plot-only
 """
 import csv
 import random
@@ -31,45 +35,52 @@ FIELDS = ["goal_area", "num_robots", "instance_id", "seed", "solver", "success",
           "attempts", "sum_of_costs", "lower_bound", "gap_upper_pct"]
 
 
-def run(sizes=(100, 200, 300), per_size=10, limit=60, seed0=20261112):
+def make_instances(sizes=(100, 200, 300), per_size=10, seed0=20261112):
+    """Yield (area, k, j, seed, instance) in run order. Same instances on every call."""
     grid = load_map(MAP)
     free = mapf.cells(grid)
-    graph = fast_pp.Graph(grid)
     areas = {
         "shelf_area": [p for p in free if SHELF_COLS[0] <= p[1] <= SHELF_COLS[1]],
         "open_area": [p for p in free if not SHELF_COLS[0] <= p[1] <= SHELF_COLS[1]],
     }
+    for k in sizes:
+        for j in range(per_size):
+            for a, (area, pool) in enumerate(areas.items()):
+                seed = seed0 + 1000 * k + 100 * a + j
+                rng = random.Random(seed)
+                goals = rng.sample(pool, k)
+                taken = set(goals)
+                starts = rng.sample([p for p in free if p not in taken], k)
+                yield area, k, j, seed, dict(grid=grid, starts=starts, goals=goals)
+
+
+def run(solvers=("pp", "pp_promote"), target="endpoints_results.csv", only_area=None, limit=60):
+    graph = fast_pp.Graph(load_map(MAP))
     rows = []
-    with (HERE / "endpoints_results.csv").open("w", newline="", encoding="utf-8") as f:
+    with (HERE / target).open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
-        for k in sizes:
-            for j in range(per_size):
-                for a, (area, pool) in enumerate(areas.items()):
-                    seed = seed0 + 1000 * k + 100 * a + j
-                    rng = random.Random(seed)
-                    goals = rng.sample(pool, k)
-                    taken = set(goals)
-                    starts = rng.sample([p for p in free if p not in taken], k)
-                    inst = dict(grid=grid, starts=starts, goals=goals)
-                    lb = lower_bound(inst, graph)
-                    for solver in ("pp", "pp_promote"):
-                        res = fast_pp.solve(inst, limit, solver, seed, 32)
-                        row = dict(goal_area=area, num_robots=k, instance_id=f"{area}-k{k}-{j:03d}", seed=seed,
-                                   solver=solver, status=res["status"], runtime_sec=round(res["runtime"], 4),
-                                   attempts=res["attempts"], lower_bound=lb, success=False,
-                                   sum_of_costs="", gap_upper_pct="")
-                        if res["paths"] is not None:
-                            legal, v, s, cost = check_plan(inst, res["paths"])
-                            ok = legal and v == 0 and s == 0 and res["runtime"] <= limit
-                            row.update(success=ok, sum_of_costs=cost)
-                            if ok:
-                                row["gap_upper_pct"] = round(100 * (cost / lb - 1), 3)
-                            else:
-                                row["status"] = "timeout" if res["runtime"] > limit else "invalid"
-                        w.writerow(row); f.flush(); rows.append(row)
-                    print(f"k={k} #{j} {area}: " + ", ".join(
-                        f"{r['solver']} {r['status']} {r['runtime_sec']:.1f}s" for r in rows[-2:]), flush=True)
+        for area, k, j, seed, inst in make_instances():
+            if only_area and area != only_area:
+                continue
+            lb = lower_bound(inst, graph)
+            for solver in solvers:
+                res = fast_pp.solve(inst, limit, solver, seed, 32)
+                row = dict(goal_area=area, num_robots=k, instance_id=f"{area}-k{k}-{j:03d}", seed=seed,
+                           solver=solver, status=res["status"], runtime_sec=round(res["runtime"], 4),
+                           attempts=res["attempts"], lower_bound=lb, success=False,
+                           sum_of_costs="", gap_upper_pct="")
+                if res["paths"] is not None:
+                    legal, v, s, cost = check_plan(inst, res["paths"])
+                    ok = legal and v == 0 and s == 0 and res["runtime"] <= limit
+                    row.update(success=ok, sum_of_costs=cost)
+                    if ok:
+                        row["gap_upper_pct"] = round(100 * (cost / lb - 1), 3)
+                    else:
+                        row["status"] = "timeout" if res["runtime"] > limit else "invalid"
+                w.writerow(row); f.flush(); rows.append(row)
+            print(f"k={k} #{j} {area}: " + ", ".join(
+                f"{r['solver']} {r['status']} {r['runtime_sec']:.1f}s" for r in rows[-len(solvers):]), flush=True)
     return rows
 
 
@@ -82,10 +93,13 @@ def plot(rows, target):
              "open_area": ("Goals in open areas", "#16a34a", "s")}
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
     for area, (label, color, marker) in style.items():
-        for solver, ls in (("pp", "-"), ("pp_promote", "--")):
+        names = {"pp": ("fixed order", "-"), "pp_promote": ("failed robot first", "--"),
+                 "pp_promote_cutoff": ("failed robot first + cut-off test", ":")}
+        for solver, (name, ls) in names.items():
             g = lambda k: [r for r in rows if r["goal_area"] == area and r["solver"] == solver and int(r["num_robots"]) == k]
+            if not g(sizes[0]):
+                continue
             rate = [100 * sum(str(r["success"]) == "True" for r in g(k)) / len(g(k)) for k in sizes]
-            name = "fixed order" if solver == "pp" else "failed robot first"
             axes[0].plot(sizes, rate, marker=marker, color=color, linestyle=ls, label=f"{label}, {name}")
         g = lambda k: [r for r in rows if r["goal_area"] == area and r["solver"] == "pp" and int(r["num_robots"]) == k]
         med = [statistics.median(float(r["runtime_sec"]) for r in g(k)) for k in sizes]
@@ -101,8 +115,15 @@ def plot(rows, target):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--cutoff":
+        area = sys.argv[2]
+        run(("pp_promote_cutoff",), f"endpoints_cutoff_{area.split('_')[0]}.csv", area)
+        sys.exit()
     if len(sys.argv) > 1 and sys.argv[1] == "--plot-only":
         rows = list(csv.DictReader((HERE / "endpoints_results.csv").open(encoding="utf-8")))
     else:
         rows = run()
+    for name in ("endpoints_cutoff_shelf.csv", "endpoints_cutoff_open.csv"):
+        if (HERE / name).exists():
+            rows += list(csv.DictReader((HERE / name).open(encoding="utf-8")))
     plot(rows, HERE / "endpoints.png")
