@@ -2,7 +2,7 @@
 
 **DCSS309 Algorithms · Korea University Sejong · Group A4**
 
-In a robotic fulfilment centre, many robots share the same narrow aisles, and every one of them needs a path that never collides with another. An optimal planner can find the cheapest set of paths, but its search grows exponentially with the number of robots. This project measures that trade-off on a small warehouse grid and asks why companies use a fast, non-optimal method, *prioritized planning*, instead.
+In a robotic fulfilment centre, many robots share the same narrow aisles, and every one of them needs a path that never collides with another. An optimal planner can find the cheapest set of paths, but its search grows exponentially with the number of robots. This project measures that trade-off on a small warehouse grid, repeats the prioritized-planning part on a standard benchmark warehouse map with up to 300 robots, and asks why companies use a fast, non-optimal method, *prioritized planning*, instead.
 
 ![No coordination vs. prioritized planning](presentation/side_by_side.gif)
 
@@ -11,6 +11,8 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 ## Summary
 
 In our experiment, the optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
+
+On a standard benchmark warehouse map about 40 times larger, PP planned 200 robots in about 10 seconds even in plain Python, with a median cost no more than 17% above the optimum. It started failing often from 250 robots, again because robots parked in aisles cut others off.
 
 This supports the project's working conclusion:
 
@@ -111,6 +113,26 @@ On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances a
 
 Fixed-order PP failed on 129 instances. Moving the failed robot to the front solved 114 of them; random shuffling solved 62. Neither variant failed on an instance that fixed-order PP solved. Reordering does not fix everything: on the aisle layout with 20 robots, the failed-robot-first variant still failed on 9 of 20 instances, and its median time rose to 2.1 s because of repeated replanning. In a separate study with five orders per instance, the order changed whether planning succeeded on 90 of 400 instances and changed the cost on 222.
 
+### 5. At benchmark scale: 50 to 300 robots on a real-size warehouse map
+
+![Scale results](scale/scale.png)
+
+We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161 × 63 cells, 5,699 free cells), with random starts and goals and 10 instances per size. The optimum cannot be computed at this size, so PP's cost is compared with a lower bound (the sum of each robot's own shortest-path length); the result is an upper bound on the real gap.
+
+| Robots | Collisions without coordination (median) | Fixed-order PP: plans found | Median time of successful runs | Cost above lower bound: median |
+| ---: | ---: | ---: | ---: | ---: |
+| 50 | 32 | 10/10 | 0.4 s | 3.0% |
+| 100 | 127 | 8/10 | 3.3 s | 12.1% |
+| 200 | 702.5 | 8/10 | 10.4 s | 17.0% |
+| 250 | 1,105.5 | 5/10 | 16.5 s | 20.0% |
+| 300 | 1,418.5 | 1/10 | 29.1 s | (1 run) |
+
+- PP still plans hundreds of robots in seconds, in Python. Its cost gap grows with crowding.
+- In all 14 timeouts, the robot being planned was cut off from its goal by robots parked before it, the same mechanism as the aisle layout above. Failed-robot-first rescued only 2 runs: after a timeout there was no time left to try another order.
+- To make this size feasible, PP was re-implemented with hash-table reservations ([`scale/fast_pp.py`](scale/fast_pp.py)). It returns exactly the same paths as `mapf.py` on all 1,200 PP runs of the main experiment and on 12 runs on the benchmark map.
+
+Details, limits and how to run: [`scale/README.md`](scale/README.md).
+
 ## Verification
 
 The experiment code was checked by separately written code (see [`verification/README.md`](verification/README.md)):
@@ -129,6 +151,7 @@ The experiment code was checked by separately written code (see [`verification/R
 | `outputs/` | Results of the main run (CSV, saved paths, plots, `EXPERIMENT_REPORT.md`) |
 | `analysis/` | Cost gap against CBS optima |
 | `presentation/` | Side-by-side animation for the talk |
+| `scale/` | PP on a standard benchmark warehouse map, 50 to 300 robots |
 | `verification/` | Independent checks and the reference CBS |
 | `tests/` | Unit and pipeline tests |
 | [`docs/TECHNICAL.md`](docs/TECHNICAL.md) | Full technical documentation: data format, method details, metrics |
@@ -142,19 +165,21 @@ python -m pip install -r requirements.txt
 python run_project.py                 # tests + main experiment + order study (several minutes)
 python analysis/cbs_gap.py            # CBS optima and cost-gap plot (slow: runs CBS on every instance)
 python presentation/side_by_side.py   # side-by-side GIF
+python scale/run_scale.py             # benchmark-map experiment (about 1 hour)
 ```
 
 Quick check: `python run.py --quick --output quick_outputs`.
 
 ## AI usage
 
-The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md`](AI_USAGE.md)). The verification code, the CBS analysis and the side-by-side animation were written with the help of Claude. All numbers in this README come from actual runs saved in this repository; team members reviewed and re-ran the code.
+The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md`](AI_USAGE.md)). The verification code, the CBS analysis, the side-by-side animation and the benchmark-scale experiment were written with the help of Claude. All numbers in this README come from actual runs saved in this repository.
 
 ## References
 
 - Silver (2005), *Cooperative Pathfinding*.
 - Standley (2010), *Finding Optimal Solutions to Cooperative Pathfinding Problems*.
 - Sharon et al. (2015), *Conflict-Based Search for Optimal Multi-Agent Pathfinding*.
+- Stern et al. (2019), *Multi-Agent Pathfinding: Definitions, Variants, and Benchmarks* (source of the benchmark map).
 - Bennewitz, Burgard & Thrun (2002), *Finding and Optimizing Solvable Priority Schemes for Decoupled Path Planning Techniques for Teams of Mobile Robots*.
 - Čáp et al. (2015), *Prioritized Planning Algorithms for Trajectory Coordination of Multiple Mobile Robots*.
 

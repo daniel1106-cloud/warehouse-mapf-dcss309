@@ -129,6 +129,9 @@ def run(sizes, per_size, limit, seed0, out):
     return rows
 
 
+MIN_SUCCESSES = 3  # robot counts with fewer successful runs are left out of the cost panel
+
+
 def plot(rows, target):
     import matplotlib
     matplotlib.use("Agg")
@@ -143,19 +146,20 @@ def plot(rows, target):
         med_t = [statistics.median(float(r["runtime_sec"]) for r in sel(k)) for k in sizes]
         axes[0].plot(sizes, rate, marker=marker, color=color, label=label)
         axes[1].plot(sizes, med_t, marker=marker, color=color, label=label)
-        xs, med, mx = [], [], []
-        for k in sizes:
-            g = [float(r["gap_upper_pct"]) for r in sel(k) if ok(r)]
-            if g:
-                xs.append(k); med.append(statistics.median(g)); mx.append(max(g))
-        axes[2].plot(xs, med, marker=marker, color=color, label=f"{label}, median")
-        axes[2].plot(xs, mx, marker=marker, color=color, linestyle="--", alpha=.45, label=f"{label}, maximum")
+        if solver == "pp":  # the two PP variants have nearly identical costs; show one
+            xs, med, mx = [], [], []
+            for k in sizes:
+                g = [float(r["gap_upper_pct"]) for r in sel(k) if ok(r)]
+                if len(g) >= MIN_SUCCESSES:
+                    xs.append(k); med.append(statistics.median(g)); mx.append(max(g))
+            axes[2].plot(xs, med, marker=marker, color=color, label="median")
+            axes[2].plot(xs, mx, marker="^", color=color, linestyle="--", alpha=.45, label="maximum")
     axes[0].set(title="Plans found", ylabel="Success rate (%)", ylim=(-5, 105))
-    axes[1].set(title="Median planning time (Python)", ylabel="Seconds")
-    axes[2].set(title="Cost above a lower bound on the optimum", ylabel="Upper bound on gap (%)")
+    axes[1].set(title="Median planning time (Python; a timeout counts as 60 s)", ylabel="Seconds")
+    axes[2].set(title="Fixed-order PP cost above a lower bound on the optimum", ylabel="Upper bound on gap (%)")
     for ax in axes:
-        ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.grid(alpha=.2); ax.legend(fontsize=7)
-    fig.suptitle(f"Prioritized planning on the {MAP} benchmark map (161 x 63)")
+        ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.grid(alpha=.2); ax.legend(fontsize=8)
+    fig.suptitle(f"Prioritized planning on the {MAP} benchmark map (161 x 63), 10 instances per size")
     fig.tight_layout()
     fig.savefig(target, dpi=160)
     plt.close(fig)
