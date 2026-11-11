@@ -109,7 +109,16 @@ For small fleets PP is usually optimal or close to it, but the typical gap grows
 | Aisle | 78 / 200 (39.0%) |
 | Warehouse | 193 / 200 (96.5%) |
 
-On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. Not every aisle instance needs to have a plan at all: at least 185 of the 200 do (failed-robot-first found one), and for the other 15 we do not know. The difference between the layouts is far beyond chance (Fisher exact p < 10⁻³⁸, [`analysis/significance.txt`](analysis/significance.txt)). A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
+On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. Not every aisle instance needs to have a plan at all: at least 185 of the 200 do (failed-robot-first found one), and for the other 15 we do not know. The difference between the layouts is far beyond chance (Fisher exact p < 10⁻³⁸, [`analysis/significance.txt`](analysis/significance.txt)).
+
+**Theory check: revised PP.** Čáp et al. (2015) prove that *revised* PP (RPP) always finds a plan when the layout is "well-formed": every start and goal lies off the paths that connect the others. RPP adds one rule to our PP: a robot never enters the start cell of a robot planned after it, which is still standing there. Our warehouse layout, with starts and goals in side bays, is close to well-formed; the aisle layout is not. [`analysis/rpp_check.py`](analysis/rpp_check.py) adds the rule ([`analysis/rpp_check.csv`](analysis/rpp_check.csv)):
+
+| Layout | PP, fixed order | RPP, fixed order |
+| --- | --- | --- |
+| Aisle | 78 / 200 | 39 / 200 |
+| Warehouse | 193 / 200 | 200 / 200 |
+
+On the warehouse layout the rule removes all 7 remaining failures, as the theorem predicts. On the aisle layout it makes things worse: starts in the aisles become walls, and RPP never solved an instance there that PP could not. The guarantee comes from the layout, not from the planner alone. Where both found a plan, the median cost was the same. A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
 
 ### 4. Changing the planning order rescues most failures
 
