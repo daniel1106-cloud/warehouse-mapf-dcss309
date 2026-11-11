@@ -1,2 +1,2 @@
-{'trials': 400, 'equal_optimum': 354, 'different_optimum': 0, 'reference_unsolved': 46, 'joint_timeout': 0, 'joint_invalid': 0, 'pp_invalid': 0, 'pp_below_optimum': 0}
+{'trials': 400, 'equal_optimum': 354, 'different_optimum': 0, 'both_no_plan': 46, 'reference_timeout': 0, 'joint_none_reference_found': 0, 'joint_timeout': 0, 'joint_invalid': 0, 'pp_invalid': 0, 'pp_below_optimum': 0}
 exit=0
