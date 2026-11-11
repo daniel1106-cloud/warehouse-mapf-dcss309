@@ -10,7 +10,7 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 
 ## Summary
 
-In our experiment, the optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
+In our experiment, a basic optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. A stronger optimal solver, conflict-based search (CBS), went further but also stopped: within 10 s it solved none of 20 aisle instances with 12 robots and none of 20 warehouse instances with 14. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. Planning the failed robot first rescued most failures.
 
 On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. In a follow-up with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 instances at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20.
 
@@ -35,7 +35,7 @@ Robots move on a grid. At each time step a robot moves one cell up, down, left o
 - no two robots are in the same cell at the same time (*vertex conflict*), and
 - no two robots swap cells in one step (*swap conflict*).
 
-A robot that has finished parks on its goal and keeps occupying it. The cost of a plan is the **sum of the times at which robots reach their goals for the last time**. This problem is called multi-agent path finding (MAPF).
+A robot that has finished parks on its goal and keeps occupying it. All robots are planned once, together (one-shot MAPF); new tasks arriving over time are not modelled. The cost of a plan is the **sum of the times at which robots reach their goals for the last time**. This problem is called multi-agent path finding (MAPF).
 
 ## Methods compared
 
@@ -71,6 +71,13 @@ An independent **conflict-based search (CBS)** solver was also written for verif
 
 Medians include timed-out and failed runs. After the first timeout, larger sizes are skipped for Joint A*, so the experiment does not measure how much longer it would take beyond that point. On the aisle layout PP is fast but often fails; section 3 covers that.
 
+Joint A* here is the basic version, without the improvements Standley (2010) introduced (operator decomposition, independence detection). A stronger optimal solver gives the same picture a few robots later. Our reference CBS ([`verification/reference_cbs.py`](verification/reference_cbs.py), 10 s per instance, [`analysis/cbs_gap.csv`](analysis/cbs_gap.csv)) solved:
+
+| Layout | 6 robots | 8 | 10 | 12 | 14 |
+| --- | --- | --- | --- | --- | --- |
+| Aisle | 13/20 | 7/20 | 2/20 | 0/20 | (not run) |
+| Warehouse | 20/20 | 12/20 | 12/20 | 4/20 | 0/20 |
+
 With k robots, Joint A* must consider up to 5^k combined moves at every step (each robot moves in one of four directions or waits), so each extra robot multiplies the work. PP searches for one robot at a time, so adding a robot adds one more search instead.
 
 ### 2. PP gives up some cost, and more as the floor gets busier
@@ -102,7 +109,7 @@ For small fleets PP is usually optimal or close to it, but the typical gap grows
 | Aisle | 78 / 200 (39.0%) |
 | Warehouse | 193 / 200 (96.5%) |
 
-On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
+On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. Not every aisle instance needs to have a plan at all: at least 185 of the 200 do (failed-robot-first found one), and for the other 15 we do not know. The difference between the layouts is far beyond chance (Fisher exact p < 10⁻³⁸, [`analysis/significance.txt`](analysis/significance.txt)). A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
 
 ### 4. Changing the planning order rescues most failures
 
@@ -111,7 +118,7 @@ On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances a
 | Aisle | 78 / 200 | 185 / 200 | 133 / 200 |
 | Warehouse | 193 / 200 | 200 / 200 | 200 / 200 |
 
-Fixed-order PP failed on 129 instances. Moving the failed robot to the front solved 114 of them; random shuffling solved 62. Neither variant failed on an instance that fixed-order PP solved. Reordering does not fix everything: on the aisle layout with 20 robots, the failed-robot-first variant still failed on 9 of 20 instances, and its median time rose to 2.1 s because of repeated replanning. In a separate study with five orders per instance, the order changed whether planning succeeded on 90 of 400 instances and changed the cost on 222.
+Fixed-order PP failed on 129 instances. Moving the failed robot to the front solved 114 of them; random shuffling solved 62. Neither variant failed on an instance that fixed-order PP solved. Reordering does not fix everything: on the aisle layout with 20 robots, the failed-robot-first variant still failed on 9 of 20 instances, and its median time rose to 2.1 s because of repeated replanning. In a separate study with five orders per instance, the order changed whether planning succeeded on 90 of 400 instances and changed the cost on 222. Success flips were rare up to 4 robots (2 of 80 instances) and came almost entirely from 6 robots up.
 
 ### 5. At benchmark scale: 50 to 300 robots on a real-size warehouse map
 
@@ -130,8 +137,8 @@ We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161
 
 - PP still plans hundreds of robots in seconds to tens of seconds, in Python. The upper bound on its cost gap grows with crowding (the bound itself probably loosens as robots crowd).
 - Fixed-order PP failed 18 times (14 timeouts, 4 `blocked`). In all 14 timeouts, the robot being planned was cut off from its goal by robots parked before it, the same mechanism as the aisle layout above. Failed-robot-first rescued only 2 runs: after a timeout there was no time left to try another order.
-- **Follow-up 1, where robots stop:** on new instances with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20, although those trips are longer. At these sizes reordering did not make up for it.
-- **Follow-up 2, detect failure early:** a quick test for robots cut off by parked robots lets failed-robot-first try other orders before the time runs out: 44 → 49 of 60 instances solved. The test is conservative and fired on 15 of the 42 instances fixed-order PP had solved, which made planning slower: on instances solved both ways, the median time rose from 10.6 to 16.1 s at 200 robots and from 16.2 to 31.3 s at 250.
+- **Follow-up 1, where robots stop:** on new instances with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20 (Fisher exact p = 1.5 × 10⁻⁷), although those trips are longer. A control with the open-area goals limited to as many cells as the shelf area gave 14 of 20. At these sizes reordering did not make up for it.
+- **Follow-up 2, detect failure early:** a quick test for robots cut off by parked robots lets failed-robot-first try other orders before the time runs out: 44 → 49 of 60 instances solved (7 gained, 2 lost; not statistically significant, McNemar exact p = 0.18). The test is conservative and fired on 15 of the 42 instances fixed-order PP had solved, which made planning slower: on instances solved both ways, the median time rose from 10.6 to 15.4 s at 200 robots and from 16.2 to 31.2 s at 250.
 - To make this size feasible, PP was re-implemented with hash-table reservations ([`scale/fast_pp.py`](scale/fast_pp.py)). It returns exactly the same paths as `mapf.py` on all 1,200 PP runs of the main experiment and on 12 runs on the benchmark map.
 
 Details, limits and how to run: [`scale/README.md`](scale/README.md).
@@ -140,7 +147,7 @@ Details, limits and how to run: [`scale/README.md`](scale/README.md).
 
 The experiment code was checked by separately written code (see [`verification/README.md`](verification/README.md)):
 
-- **Full re-run on a second machine:** all 2,000 rows have the same success values and costs; only runtimes differ ([comparison](verification/results/rerun_comparison.txt)).
+- **Full re-run on a second machine:** all 2,000 rows of the main experiment have the same success values and costs; only runtimes differ ([comparison](verification/results/rerun_comparison.txt)). The benchmark-map results depend on a 60 s wall-clock limit, so runs near the limit may come out differently on another machine; this was not re-run on a second machine.
 - **Independent validator:** all 1,484 returned plans re-checked, no mismatch.
 - **Independent CBS:** all 95 Joint A* optima reproduced exactly; PP was never below an optimum.
 - **Stress test:** 400 random instances on small crowded grids, no disagreement.

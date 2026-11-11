@@ -43,7 +43,7 @@ python cbs_reach.py ../outputs 5 10
 | aisle | all 5 up to 6 robots, 1 of 5 at 8, none at 10 | stops at 4 robots |
 | warehouse | all 5 up to 6 robots, 2–3 of 5 at 8–12, none at 14 | stops at 6 robots |
 
-CBS extends the range of proven optima only moderately, and only with small samples. Where it solved warehouse instances with 8–12 robots, fixed-order PP was a median 0.8–4.5% and at most 9.0% above the optimum.
+CBS extends the range of proven optima only moderately. In this 5-instance sample, where it solved warehouse instances with 8–12 robots, fixed-order PP was a median 0.8–4.5% and at most 9.0% above the optimum. The later analysis on all 20 instances per size ([`../analysis/cbs_gap.csv`](../analysis/cbs_gap.csv), main README section 2) found larger gaps, up to 23.2% at 8 robots; use those numbers.
 
 ## Limits
 
