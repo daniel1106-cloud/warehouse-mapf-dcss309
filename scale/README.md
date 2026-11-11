@@ -42,7 +42,8 @@ Joint A* and CBS are not run. At these sizes the optimum cannot be computed, so 
 Result 4 suggests that failures come from robots parked in one-cell aisles. [`run_endpoints.py`](run_endpoints.py) tests this directly on the same map. Starts are random free cells anywhere; only the goals, where robots stop and stay, are restricted:
 
 - **shelf_area:** goals in the shelf area (columns 26 to 134, 2,649 free cells), whose aisles are one cell wide;
-- **open_area:** goals in the open areas on the left and right (3,050 free cells).
+- **open_area:** goals in the open areas on the left and right (3,050 free cells);
+- **open_matched (control):** goals in a fixed random subset of the open areas with 2,649 cells, as many as the shelf area, so that both goal areas offer the same number of candidate cells (`--matched`).
 
 100, 200 and 300 robots, 10 new instances per size and setting (base seed 20261112), 60 s limit. These are new instance sets, not the instances of the main table, and the shelf and open instances are not paired (their starts differ as well).
 
@@ -56,13 +57,17 @@ Result 4 suggests that failures come from robots parked in one-cell aisles. [`ru
 | 200 | open areas | 8/10 | 10/10 | 10/10 | 13.0 s | 14.3% |
 | 300 | shelf aisles | 0/10 | 0/10 | 0/10 | (none) | (none) |
 | 300 | open areas | 8/10 | 10/10 | 10/10 | 30.3 s | 18.9% |
+| 100 | open, 2,649 cells (control) | 10/10 | 10/10 | 10/10 | 3.7 s | 7.3% |
+| 200 | open, 2,649 cells (control) | 8/10 | 10/10 | 10/10 | 14.0 s | 13.6% |
+| 300 | open, 2,649 cells (control) | 6/10 | 10/10 | 9/10 | 28.8 s | 18.3% |
 
-The cut-off test is the one from follow-up 2 below. In the plot, some lines lie on top of each other (shelf aisles: fixed order and failed robot first; open areas: both failed-robot-first variants). Full data: [`endpoints_results.csv`](endpoints_results.csv), [`endpoints_cutoff_shelf.csv`](endpoints_cutoff_shelf.csv), [`endpoints_cutoff_open.csv`](endpoints_cutoff_open.csv).
+The cut-off test is the one from follow-up 2 below. In the plot, some lines lie on top of each other (shelf aisles: fixed order and failed robot first; open areas: both failed-robot-first variants). The plot shows the first two settings. Full data: [`endpoints_results.csv`](endpoints_results.csv), [`endpoints_cutoff_shelf.csv`](endpoints_cutoff_shelf.csv), [`endpoints_cutoff_open.csv`](endpoints_cutoff_open.csv), [`endpoints_matched.csv`](endpoints_matched.csv).
 
-- **Where robots stop strongly affects whether PP works at this scale.** With goals in the shelf aisles, fixed-order PP solved none of the 20 instances with 200 or 300 robots; with goals in the open areas it solved 16 of 20. All 23 shelf-aisle failures were timeouts.
-- **This is not because the open-area trips are shorter.** They are longer: per robot, the median shortest path is 86 steps for open-area goals and 71 for shelf-aisle goals (mean 89 and 74).
+- **Where robots stop strongly affects whether PP works at this scale.** With goals in the shelf aisles, fixed-order PP solved none of the 20 instances with 200 or 300 robots; with goals in the open areas it solved 16 of 20 (Fisher exact p = 1.5 × 10⁻⁷), and with the control setting 14 of 20. All 23 shelf-aisle failures were timeouts.
+- **This is not because the open-area trips are shorter.** They are longer: per robot, the median shortest path is 86 steps for open-area goals, 91 in the control setting and 71 for shelf-aisle goals (mean 89, 91 and 74).
 - **At 200 and 300 robots, reordering does not make up for it.** Without the cut-off test, failed-robot-first changed nothing in the shelf aisles (every failure was a timeout). With the test it rescued all 3 failures at 100 robots, but only 3 of 10 at 200 and none at 300, after 8 to 14 attempts per run. With goals in the open areas, failed-robot-first solved every instance, mostly on the first attempt.
-- **Limit:** the shelf area also holds fewer free cells than the open areas (2,649 against 3,050), so goals are slightly more crowded there. We did not separate this from the aisle effect.
+- **Nor because the shelf area has fewer cells.** With the open-area goals restricted to as many cells as the shelf area, fixed-order PP still solved 14 of 20 instances at 200 and 300 robots, and failed-robot-first solved all 20.
+- **Remaining differences:** the two goal areas also differ in where they lie on the map (sides vs middle), so this is still a comparison of two areas, not of aisle width alone. The shelf and open runs were made in parallel on a 2-core machine; the control run was made on its own.
 
 ## Follow-up 2: detect failure early, then reorder
 
@@ -70,23 +75,23 @@ Result 5 left open whether reordering fails at scale because of the method or be
 
 | Robots | Fixed order | Fixed order + test | Test fired | Failed robot first | Failed robot first + test | Median time without / with test, instances both solved |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 50 | 10/10 | 10/10 | 0 | 10/10 | 10/10 | 0.4 s / 0.6 s |
-| 100 | 8/10 | 7/10 | 3 | 8/10 | 10/10 | 3.5 s / 3.6 s |
-| 150 | 10/10 | 5/10 | 5 | 10/10 | 10/10 | 6.3 s / 8.1 s |
-| 200 | 8/10 | 3/10 | 7 | 8/10 | 10/10 | 10.6 s / 16.1 s |
-| 250 | 5/10 | 2/10 | 8 | 6/10 | 8/10 | 16.2 s / 31.3 s |
-| 300 | 1/10 | 0/10 | 9 | 2/10 | 1/10 | 31.4 s / 35.3 s (1 instance) |
+| 50 | 10/10 | 10/10 | 0 | 10/10 | 10/10 | 0.4 s / 0.5 s |
+| 100 | 8/10 | 7/10 | 3 | 8/10 | 10/10 | 3.5 s / 3.4 s |
+| 150 | 10/10 | 5/10 | 5 | 10/10 | 10/10 | 6.3 s / 7.6 s |
+| 200 | 8/10 | 3/10 | 7 | 8/10 | 10/10 | 10.6 s / 15.4 s |
+| 250 | 5/10 | 2/10 | 8 | 6/10 | 8/10 | 16.2 s / 31.2 s |
+| 300 | 1/10 | 0/10 | 9 | 2/10 | 1/10 | 31.4 s / 34.3 s (1 instance) |
 | **All** | **42/60** | **27/60** | **32** | **44/60** | **49/60** | |
 
 "Test fired" counts runs of fixed order + test that stopped with `cut_off`. Times are for the failed-robot-first variants, taken only over instances both of them solved, so the two medians cover the same instances. Full data: [`cutoff_results.csv`](cutoff_results.csv), compared with `pp` and `pp_promote` in [`results.csv`](results.csv).
 
-- **The test catches the timeouts.** It fired in 17 of the 18 runs that fixed-order PP failed, including all 14 timeouts, after 1.5 to 10.6 s, where the timeouts had used the full 60 s.
+- **The test catches the timeouts.** It fired in 17 of the 18 runs that fixed-order PP failed, including all 14 timeouts, after 1.5 to 10.0 s, where the timeouts had used the full 60 s.
 - **It also fires too often.** On the 42 instances that fixed-order PP solved, it reported `cut_off` on 15 (36%). On those instances the order changes for no reason.
-- **Net effect: 44 → 49 of 60.** With the test, failed-robot-first solved 7 instances it could not solve before (all of them timeouts, 100 to 250 robots) and lost 2 it had solved (250 and 300 robots), where the extra reorders ran out of time. One of the two had originally needed 56.8 s, so this loss may depend on CPU load (see below). At 300 robots it solved 1 of 10 instead of 2.
+- **Net effect: 44 → 49 of 60.** With the test, failed-robot-first solved 7 instances it could not solve before (all of them timeouts, 100 to 250 robots) and lost 2 it had solved (250 and 300 robots), where the extra reorders ran out of time after 4 attempts. At 300 robots it solved 1 of 10 instead of 2. With 7 gained and 2 lost, the net gain is **not statistically significant** (McNemar exact p = 0.18; see [`../analysis/significance.txt`](../analysis/significance.txt)), so it shows a tendency, not an established improvement.
 - **Cost is about the same.** Where both variants succeeded, 15 instances ended with a different order; in 14 of them the cost changed, by less than 1 percentage point of the lower bound (10 lower, 4 higher).
-- **It costs time.** On instances both variants solved, the median time rose from 10.6 to 16.1 s at 200 robots and from 16.2 to 31.3 s at 250. Most of this comes from the extra reorders; even where the test never fired, runs were about 10% slower (one search per robot for the test, plus the load described below).
+- **It costs time.** On instances both variants solved, the median time rose from 10.6 to 15.4 s at 200 robots and from 16.2 to 31.2 s at 250. Most of this comes from the extra reorders; where the test never fired, runs were about 5% slower (one extra search per robot).
 
-So reordering does help at scale, but only once failure is detected quickly, and this simple test trades false alarms for speed. These runs and follow-up 1 ran at the same time on a 2-core machine, while `results.csv` was produced earlier without a parallel run. The 60 s limit is wall-clock time, so the extra load can change not only times but also success near the limit: several successes took 45 to 58 s. Treat differences of one or two instances as uncertain.
+So reordering can help at scale only once failure is detected quickly, and this simple test trades false alarms for speed; on 60 instances the overall gain is within chance. The table comes from a run on its own. A first run, made in parallel with follow-up 1 on the same 2-core machine, gave exactly the same statuses and costs, with times within a few percent.
 
 ## How the speed-up was checked
 
