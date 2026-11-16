@@ -77,6 +77,26 @@ def main():
     cut = {r["instance_id"]: ok(r) for r in rows("scale/cutoff_results.csv") if r["solver"] == "pp_promote_cutoff"}
     out.append("  " + mcnemar("failed robot first, without vs with cut-off test", [(base[i], cut[i]) for i in cut]))
 
+    out.append("")
+    out.append("Benchmark map, LaCAM (scale/lacam.py)")
+    lac = rows("scale/lacam_endpoints.csv") if (ROOT / "scale/lacam_endpoints.csv").exists() else []
+    if lac:
+        out.append("  " + fisher("200 and 300 robots, LaCAM, shelf aisles vs open areas",
+                                 get(lac, "shelf_area", "lacam", (200, 300)), get(lac, "open_area", "lacam", (200, 300))))
+
+    out.append("")
+    out.append("Benchmark map, one-way aisles vs two-way (fixed-order PP, same instances)")
+    if (ROOT / "scale/oneway_results.csv").exists():
+        two = {r["instance_id"]: ok(r) for r in rows("scale/results.csv") if r["solver"] == "pp"}
+        two.update({r["instance_id"]: ok(r) for r in ep if r["solver"] == "pp"})
+        one = rows("scale/oneway_results.csv")
+        out.append("  " + mcnemar("goals anywhere or in shelf aisles (200-300 robots): two-way vs one-way",
+                                  [(two[r["instance_id"]], ok(r)) for r in one]))
+    if (ROOT / "scale/oneway_open.csv").exists():
+        one = rows("scale/oneway_open.csv")
+        out.append("  " + mcnemar("goals in open areas (200 and 300 robots): two-way vs one-way",
+                                  [(two[r["instance_id"]], ok(r)) for r in one]))
+
     text = "\n".join(out) + "\n"
     (ROOT / "analysis/significance.txt").write_text(text, encoding="utf-8")
     print(text, end="")

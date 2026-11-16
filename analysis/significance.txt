@@ -15,3 +15,10 @@ Benchmark map, where robots stop (10 instances per size and setting)
 
 Benchmark map, cut-off test (same 60 instances)
   failed robot first, without vs with cut-off test: 44 -> 49 of 60 (gained 7, lost 2), McNemar exact p = 0.18
+
+Benchmark map, LaCAM (scale/lacam.py)
+  200 and 300 robots, LaCAM, shelf aisles vs open areas: 0/20 vs 20/20, Fisher exact p = 1.5e-11
+
+Benchmark map, one-way aisles vs two-way (fixed-order PP, same instances)
+  goals anywhere or in shelf aisles (200-300 robots): two-way vs one-way: 14 -> 0 of 50 (gained 0, lost 14), McNemar exact p = 0.00012
+  goals in open areas (200 and 300 robots): two-way vs one-way: 16 -> 20 of 20 (gained 4, lost 0), McNemar exact p = 0.12

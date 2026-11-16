@@ -1,0 +1,9 @@
+One-way aisles, fixed-order PP with the cut-off test (fast_pp method "pp_cutoff", one-way graph),
+first four 200-robot instances of scale/instances.json, 60 s limit:
+warehouse-10-20-10-2-1-k200-000 cut_off 0.4 s
+warehouse-10-20-10-2-1-k200-001 cut_off 0.3 s
+warehouse-10-20-10-2-1-k200-002 cut_off 0.1 s
+warehouse-10-20-10-2-1-k200-003 cut_off 0.7 s
+A robot is "cut off" when, with the robots planned before it parked on their goals, it can no
+longer reach its own goal at all. Under one-way rules this is detected within a second, so the plain PP runs in
+oneway_results.csv most likely time out searching for paths that no longer exist.
