@@ -15,7 +15,9 @@ solvable instance (given enough time). It moves all robots one time step at a ti
              the limit every successor configuration can be reached. This makes LaCAM
              complete: it finds a plan whenever one exists, given unlimited time.
 
-This is the basic LaCAM of the paper, not LaCAM* (which keeps improving the cost) and
+This is the basic LaCAM of the paper, with one change taken from the authors' code and
+LaCAM*: a configuration reached again is put back on top of the search stack instead of
+being skipped. It is not LaCAM* (which keeps improving the cost after the first plan) and
 not the engineered C++ code of the authors (lacam3). It uses the same model as the rest
 of the repository: vertex and swap conflicts are forbidden, a robot may follow another
 into a cell it is leaving, and cost = sum of final arrival times.
@@ -162,7 +164,13 @@ def solve(instance, time_limit=60.0, seed=0, graph=None):
             for v in options:
                 node.tree.append(Constraint(c, i, v))
         new = generate(node.config, node.order, c)
-        if new is None or new in explored:
+        if new is None:
+            continue
+        if new in explored:
+            # go back to the configuration seen before instead of wandering on from here
+            # (as the authors' code and LaCAM* do; the AAAI pseudocode simply skips it).
+            # Completeness is kept: every node still expands all its constraints eventually.
+            open_.append(explored[new])
             continue
         priority = next_priority(new, node.priority)
         child = Node(new, node, get_order(priority), priority)

@@ -142,7 +142,7 @@ def pp(instance, deadline, order, graph, cutoff_check=False, revised=False):
     return result, "solved", None
 
 
-def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
+def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32, graph=None):
     """Same interface and return value as mapf.solve, for the three PP methods.
 
     Extra methods, not in mapf.py: "pp_cutoff" and "pp_promote_cutoff" add the cut-off
@@ -150,7 +150,7 @@ def solve(instance, time_limit=10, method="pp", seed=0, max_attempts=32):
     """
     begun = time.perf_counter(); deadline = begun + time_limit; paths = None; attempts = 1
     order = list(range(len(instance["starts"])))
-    graph = Graph(instance["grid"])
+    graph = graph or Graph(instance["grid"])  # a prebuilt graph may restrict moves (scale/oneway.py)
     cutoff_check = method.endswith("_cutoff")
     base = method[:-len("_cutoff")] if cutoff_check else method
     revised = base.startswith("rpp")
