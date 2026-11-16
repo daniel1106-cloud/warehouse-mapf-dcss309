@@ -130,8 +130,8 @@ Is the layout effect specific to prioritized planning? [`lacam.py`](lacam.py) im
 PP columns repeat `results.csv` and `endpoints_results.csv`. Full data: [`lacam_scale.csv`](lacam_scale.csv), [`lacam_endpoints.csv`](lacam_endpoints.csv).
 
 - **The layout effect is not specific to PP.** With goals in the shelf aisles LaCAM also solved none of the 20 instances with 200 and 300 robots; with goals in the open areas it solved all 20 (Fisher exact p = 1.5 × 10⁻¹¹).
-- **Where robots stop in the open, LaCAM is much faster than PP** (under 1 s against 2.5–30 s) and never failed, **but its plans cost three to four times as much above the lower bound.**
-- **With random endpoints our LaCAM did worse than PP at 200 and 250 robots**, timing out on most instances. On the 12 × 20 map it found plans for all 400 instances, so every instance there has a plan ([`../analysis/lacam_small.py`](../analysis/lacam_small.py)).
+- **Where robots stop in the open, LaCAM is much faster than PP** (under 1 s against 2.5–30 s) and never failed, **but its plans cost three to four times as much above the lower bound** (medians over each method's successful runs).
+- **With random endpoints our LaCAM did worse than PP at 200 and 250 robots**, timing out on most instances. On the 12 × 20 map one of two variants (revisiting or skipping configurations seen before) found a valid plan for every one of the 400 instances, so every instance there has a plan ([`../analysis/lacam_small.txt`](../analysis/lacam_small.txt)).
 - **Limit:** the LaCAM paper reports success, speed and cost competitive with other fast planners; our Python version of the basic algorithm, without the authors' engineering, is not a fair test of LaCAM's best performance. What it does show is that the shelf-aisle failures are not just a weakness of planning one robot at a time.
 
 ## Follow-up 4: one-way aisles
@@ -147,11 +147,11 @@ Amazon describes "social rules" such as virtual streets with a fixed direction. 
 
 Full data: [`oneway_results.csv`](oneway_results.csv), [`oneway_open.csv`](oneway_open.csv).
 
-- **When robots stop inside the aisles, one-way rules make PP fail completely**: 14 of 50 solved two-way, 0 of 50 one-way (McNemar exact p = 0.00012). A robot parked in a one-way aisle closes it for everyone behind it; with the cut-off test, a cut-off robot appeared within a second on each of the four instances checked ([`oneway_diagnosis.txt`](oneway_diagnosis.txt)).
+- **With random endpoints or goals in the shelf aisles, one-way rules made PP fail completely**: 14 of 50 solved two-way (all 14 with random endpoints), 0 of 50 one-way (McNemar exact p = 0.00012). A likely reason: a robot parked in a one-way aisle closes it for everyone behind it; with the cut-off test, a cut-off robot appeared within a second on each of the four random-endpoint instances checked ([`oneway_diagnosis.txt`](oneway_diagnosis.txt)).
 - **When robots stop in the open areas, one-way rules did not hurt**: PP solved all 20 instances (two-way: 16), with median times on instances solved both ways of 9.9 s against 13.0 s at 200 robots and 23.7 s against 30.3 s at 300. The gain in success is not statistically significant (4 gained, 0 lost, p = 0.12), and the plans cost a few points more because of detours.
-- So in our model a traffic rule only works together with stopping places outside the aisles. This matches the idea of virtual streets plus separate stations, but we did not model real stations or continuous tasks.
+- So in our model this traffic rule worked only when robots stopped outside the aisles. This matches the idea of virtual streets plus separate stations, but we did not model real stations or continuous tasks.
 
-These runs and follow-up 3 ran at the same time on a 2-core machine.
+These runs and follow-up 3 ran at the same time on a 2-core machine. A few successes finished close to the 60 s limit (for example LaCAM's single successes at 250 and 300 robots, at 55 and 56 s), so counts near the limit may depend on machine load.
 
 ## How the speed-up was checked
 
