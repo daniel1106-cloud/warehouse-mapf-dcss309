@@ -38,8 +38,8 @@ Settings (benchmark map warehouse-10-20-10-2-1, random distinct start cells):
   traffic  two-way, or one-way aisles in the shelf area (scale/oneway.py)
   robots   100, 200, 300; 5 runs (seeds) per setting
 
-Outputs: scale/lifelong_results.csv
-Usage:   python scale/lifelong.py            (python scale/lifelong.py --quick for a short check)
+Outputs: scale/lifelong_results.csv, scale/lifelong.png
+Usage:   python scale/lifelong.py            (--quick for a short check, --plot-only to redraw)
 """
 import csv
 import heapq
@@ -256,5 +256,42 @@ def main(quick=False):
                               flush=True)
 
 
+def plot(target=HERE / "lifelong.png"):
+    """Throughput against robots, one panel per goal setting, two-way vs one-way."""
+    import statistics
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    rows = list(csv.DictReader((HERE / "lifelong_results.csv").open(encoding="utf-8")))
+    sizes = sorted({int(r["num_robots"]) for r in rows})
+    titles = {"shelf": "Tasks in shelf aisles", "open": "Tasks in open areas",
+              "alternate": "Alternating shelf and open area"}
+    style = {"two_way": ("Two-way aisles", "#2a78d6", "o", "-"), "one_way": ("One-way aisles", "#eb6834", "s", "--")}
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+    for ax, (mode, title) in zip(axes, titles.items()):
+        for traffic, (label, color, marker, ls) in style.items():
+            vals = [[float(r["throughput"]) for r in rows if r["goals"] == mode and r["traffic"] == traffic
+                     and int(r["num_robots"]) == k] for k in sizes]
+            mean = [statistics.mean(v) for v in vals]
+            ax.plot(sizes, mean, color=color, marker=marker, markersize=8, linewidth=2, linestyle=ls, label=label)
+            ax.vlines(sizes, [min(v) for v in vals], [max(v) for v in vals], color=color, linewidth=2)
+            ax.annotate(label, (sizes[-1], mean[-1]), xytext=(6, 0), textcoords="offset points",
+                        va="center", fontsize=8, color="#333333")
+        ax.set_title(title, fontsize=11)
+        ax.set_xlabel("Robots"); ax.set_xticks(sizes); ax.set_xlim(sizes[0] - 30, sizes[-1] + 110)
+        ax.grid(alpha=.2); ax.spines[["top", "right"]].set_visible(False)
+    axes[0].set_ylabel("Tasks finished per time step")
+    axes[0].legend(fontsize=8, frameon=False, loc="upper left")
+    fig.suptitle("Lifelong planning (windowed PP), warehouse-10-20-10-2-1: mean of 5 runs, bars = min to max")
+    fig.tight_layout()
+    fig.savefig(target, dpi=160)
+    plt.close(fig)
+
+
 if __name__ == "__main__":
-    main(quick="--quick" in sys.argv)
+    if "--plot-only" in sys.argv:
+        plot()
+    else:
+        main(quick="--quick" in sys.argv)
+        if "--quick" not in sys.argv:
+            plot()
