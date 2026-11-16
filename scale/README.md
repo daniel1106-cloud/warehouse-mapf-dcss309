@@ -109,6 +109,50 @@ To check that the results are not specific to one map, [`run_scale.py --map`](ru
 - **With two-cell aisles PP never failed** (30 of 30), where the one-cell-aisle map gave 17 of 30 at the same robot counts, plausibly because a parked robot in a two-cell aisle leaves room to pass.
 - **Limit:** this map is also larger (9,776 free cells against 5,699), so the same number of robots is less crowded: in robots per free cell, 300 robots here are about as dense as 175 on the first map, where PP solved 10 of 10 at 150 and 8 of 10 at 200. The comparison therefore does not isolate aisle width; it shows that the findings carry over to a second benchmark warehouse.
 
+## Follow-up 3: a newer fast planner (LaCAM)
+
+Is the layout effect specific to prioritized planning? [`lacam.py`](lacam.py) implements LaCAM (Okumura, AAAI 2023) from the paper in Python: PIBT moves all robots one step at a time, and a search over configurations backs up when PIBT gets stuck. Unlike PP, LaCAM is complete: given enough time it finds a plan whenever one exists. This is our own implementation of the basic algorithm, not the authors' optimized C++ code and not LaCAM*, which keeps improving the cost; one detail follows the authors' code rather than the AAAI pseudocode (a configuration reached again is revisited instead of skipped). [`run_lacam.py`](run_lacam.py) runs it on the same instances as PP, 60 s limit, plans re-checked with `check_plan`.
+
+| Instances | Robots | LaCAM: plans found | PP: plans found | Median time, LaCAM / PP (successful runs) | Cost above lower bound, median: LaCAM / PP |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Random endpoints | 50 | 10/10 | 10/10 | 0.1 s / 0.4 s | 12.4% / 3.0% |
+| Random endpoints | 100 | 10/10 | 8/10 | 0.9 s / 3.3 s | 33.7% / 12.1% |
+| Random endpoints | 150 | 10/10 | 10/10 | 12.6 s / 6.2 s | 54.2% / 14.1% |
+| Random endpoints | 200 | 4/10 | 8/10 | 18.5 s / 10.4 s | 59.1% / 17.0% |
+| Random endpoints | 250 | 1/10 | 5/10 | 54.9 s / 16.5 s | (1 run) / 20.0% |
+| Random endpoints | 300 | 1/10 | 1/10 | (1 run each) | (1 run each) |
+| Goals in shelf aisles | 100 | 6/10 | 7/10 | 9.4 s / 2.2 s | 81.4% / 12.5% |
+| Goals in shelf aisles | 200 and 300 | 0/20 | 0/20 | | |
+| Goals in open areas | 100 | 10/10 | 10/10 | 0.3 s / 2.5 s | 20.4% / 5.0% |
+| Goals in open areas | 200 | 10/10 | 8/10 | 0.6 s / 13.0 s | 45.8% / 14.3% |
+| Goals in open areas | 300 | 10/10 | 8/10 | 0.9 s / 30.3 s | 59.4% / 18.9% |
+
+PP columns repeat `results.csv` and `endpoints_results.csv`. Full data: [`lacam_scale.csv`](lacam_scale.csv), [`lacam_endpoints.csv`](lacam_endpoints.csv).
+
+- **The layout effect is not specific to PP.** With goals in the shelf aisles LaCAM also solved none of the 20 instances with 200 and 300 robots; with goals in the open areas it solved all 20 (Fisher exact p = 1.5 × 10⁻¹¹).
+- **Where robots stop in the open, LaCAM is much faster than PP** (under 1 s against 2.5–30 s) and never failed, **but its plans cost three to four times as much above the lower bound.**
+- **With random endpoints our LaCAM did worse than PP at 200 and 250 robots**, timing out on most instances. On the 12 × 20 map it found plans for all 400 instances, so every instance there has a plan ([`../analysis/lacam_small.py`](../analysis/lacam_small.py)).
+- **Limit:** the LaCAM paper reports success, speed and cost competitive with other fast planners; our Python version of the basic algorithm, without the authors' engineering, is not a fair test of LaCAM's best performance. What it does show is that the shelf-aisle failures are not just a weakness of planning one robot at a time.
+
+## Follow-up 4: one-way aisles
+
+Amazon describes "social rules" such as virtual streets with a fixed direction. [`oneway.py`](oneway.py) adds such rules to the shelf area: horizontal aisles alternate east- and westbound, vertical aisles between shelf blocks alternate south- and northbound, and the open areas stay two-way (the map stays strongly connected). PP itself is unchanged; it plans on the restricted graph. 60 s limit; cost is compared with the same two-way lower bound, so it includes detours forced by the rules.
+
+| Instances | Robots | One-way: plans found | Two-way: plans found | Cost above lower bound, median (both solved): one-way / two-way |
+| --- | ---: | ---: | ---: | ---: |
+| Random endpoints | 200, 250, 300 | 0/30 | 14/30 | |
+| Goals in shelf aisles | 200, 300 | 0/20 | 0/20 | |
+| Goals in open areas | 200 | 10/10 | 8/10 | 17.9% / 14.3% |
+| Goals in open areas | 300 | 10/10 | 8/10 | 22.3% / 18.9% |
+
+Full data: [`oneway_results.csv`](oneway_results.csv), [`oneway_open.csv`](oneway_open.csv).
+
+- **When robots stop inside the aisles, one-way rules make PP fail completely**: 14 of 50 solved two-way, 0 of 50 one-way (McNemar exact p = 0.00012). A robot parked in a one-way aisle closes it for everyone behind it; with the cut-off test, a cut-off robot appeared within a second on each of the four instances checked ([`oneway_diagnosis.txt`](oneway_diagnosis.txt)).
+- **When robots stop in the open areas, one-way rules did not hurt**: PP solved all 20 instances (two-way: 16), with median times on instances solved both ways of 9.9 s against 13.0 s at 200 robots and 23.7 s against 30.3 s at 300. The gain in success is not statistically significant (4 gained, 0 lost, p = 0.12), and the plans cost a few points more because of detours.
+- So in our model a traffic rule only works together with stopping places outside the aisles. This matches the idea of virtual streets plus separate stations, but we did not model real stations or continuous tasks.
+
+These runs and follow-up 3 ran at the same time on a 2-core machine.
+
 ## How the speed-up was checked
 
 `mapf.py` checks every earlier robot's path for every candidate move. That is too slow at this size: with 50 robots `mapf.py` took 1.7 to 9.3 s per run where `fast_pp.py` took 0.3 to 1.3 s ([`equivalence_check.txt`](equivalence_check.txt)), and in a trial run (not saved) 200 robots did not finish within 2 minutes. [`fast_pp.py`](fast_pp.py) implements the same algorithm with the same neighbour order, tie-breaking, horizon and reordering rules, but keeps the reservations in hash tables. [`check_equivalence.py`](check_equivalence.py) confirms that both return identical paths and statuses:
@@ -127,7 +171,7 @@ Plans in this folder are checked with `check_plan` in `run_scale.py`, which gave
 - **Random endpoints.** The benchmark map has no recessed bays, so this does not repeat the main experiment's warehouse layout.
 - **One-shot planning.** Real warehouses assign new tasks continuously (lifelong MAPF); this experiment plans one batch, and finished robots stay on their goals.
 - **Two maps from one benchmark family.** Both maps are synthetic MovingAI warehouses with random endpoints; real fulfilment centres differ in layout and in where tasks start and end.
-- **No comparison with newer fast planners** such as LaCAM, PIBT or windowed planning (RHCR). They were not run here, so the results describe prioritized planning, not the best available fast planner.
+- **Newer fast planners only in a basic form.** LaCAM was run as our own Python implementation of the basic algorithm (follow-up 3); the authors' optimized code, LaCAM* and windowed planning (RHCR) were not run.
 - **Map source.** The benchmark site was not reachable from the environment used, so the map was copied from the `lacam3` repository ([github.com/kei18/lacam3](https://github.com/kei18/lacam3), commit `1c3ecf8`, `scripts/map/`). The original is at [movingai.com/benchmarks/mapf](https://movingai.com/benchmarks/mapf/index.html).
 
 ## How to run
@@ -143,6 +187,9 @@ python scale/run_endpoints.py       # follow-up 1: goals in shelf aisles vs open
 python scale/run_endpoints.py --cutoff shelf_area   # follow-up 1, cut-off variant (also open_area)
 python scale/run_cutoff.py          # follow-up 2: cut-off test (about 40 minutes)
 python scale/run_scale.py --map warehouse-10-20-10-2-2   # second map (about 25 minutes)
+python scale/run_lacam.py scale     # follow-up 3: LaCAM, random endpoints (about 30 minutes)
+python scale/run_lacam.py endpoints # follow-up 3: LaCAM, goal areas (about 30 minutes)
+python scale/oneway.py              # follow-up 4: one-way aisles (about 50 minutes; then: oneway.py open)
 ```
 
 ## Reference

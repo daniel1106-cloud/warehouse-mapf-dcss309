@@ -12,13 +12,13 @@ In a robotic fulfilment centre, many robots share the same narrow aisles, and ev
 
 In our experiment, a basic optimal planner (Joint A*) first ran out of its 10-second limit at **4 robots** on an open-aisle layout and at **6 robots** on a warehouse layout. A stronger optimal solver, conflict-based search (CBS), went further but also stopped: within 10 s it solved none of 20 aisle instances with 12 robots and none of 20 warehouse instances with 14. Prioritized planning (PP) answered within a fraction of a second at every size up to 20 robots, and on the warehouse layout it found a plan for 18 of 20 instances even at 20 robots. PP has two weaknesses: it can fail to find a plan, and its plans can cost more than the optimum. Failures were rare when goals sat in side bays off the aisles, but frequent when they sat in the aisles themselves. On the side-bay layout, revised PP (one extra rule from Čáp et al., 2015) removed every remaining failure, as its theory predicts. Planning the failed robot first rescued most failures on this small map.
 
-On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. In a follow-up with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 instances at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20, and still 14 of 20 when the open areas were cut to the same number of cells. On a second benchmark map with two-cell aisles, PP solved all 30 instances with 100 to 300 robots. At this scale, changing the planning order rescued the quick `blocked` failures but not the timeouts, which made up most failures in the shelf aisles.
+On a standard benchmark warehouse map about 40 times larger, fixed-order PP found plans for 8 of 10 instances with 200 robots, in a median of about 10 seconds even in plain Python, and the median cost of those plans was at most 17% above the optimum. Failures became frequent at 250 robots (5 of 10 solved) and 300 (1 of 10). Every timeout came from robots parked in aisles cutting off a later robot. In a follow-up with goals restricted to the shelf aisles, fixed-order PP solved 0 of 20 instances at 200 and 300 robots; with goals restricted to the open side areas, 16 of 20, and still 14 of 20 when the open areas were cut to the same number of cells. On a second benchmark map with two-cell aisles, PP solved all 30 instances with 100 to 300 robots. At this scale, changing the planning order rescued the quick `blocked` failures but not the timeouts, which made up most failures in the shelf aisles. A newer complete planner, LaCAM (our own Python implementation), failed in the shelf aisles too, and one-way aisle rules helped only when robots stopped outside the aisles.
 
 Our conclusion:
 
-> **Optimal planning stops at a few robots, so a fast method is needed. Prioritized planning stays fast at hundreds of robots, but whether it finds a plan depends strongly on crowding and on where robots stop; a map with wider aisles also helped. Changing the planning order rescues failures that are found quickly, but not those that use up the time limit.**
+> **Optimal planning stops at a few robots, so a fast method is needed. Prioritized planning stays fast at hundreds of robots, but whether it finds a plan depends strongly on crowding and on where robots stop; a map with wider aisles also helped. Changing the planning order rescues failures that are found quickly, but not those that use up the time limit. The effect of where robots stop also holds for a newer planner (LaCAM), and traffic rules help only together with stopping places outside the aisles.**
 
-What this does and does not show: we measured these methods on benchmark maps; we did not reproduce any company's system. Amazon Science (Brown, 2022) states that even state-of-the-art multi-agent planning cannot plan fast enough for a thousand or more robots, and the Kiva Systems paper (Wurman, D'Andrea & Mountz, 2008, written before Amazon bought Kiva in 2012) states that the drive units use a standard implementation of A*. Our results are consistent with that choice, but they do not show which algorithm any company uses today, and we did not compare with newer fast planners such as LaCAM or windowed planning.
+What this does and does not show: we measured these methods on benchmark maps; we did not reproduce any company's system. Amazon Science (Brown, 2022) states that even state-of-the-art multi-agent planning cannot plan fast enough for a thousand or more robots, and the Kiva Systems paper (Wurman, D'Andrea & Mountz, 2008, written before Amazon bought Kiva in 2012) states that the drive units use a standard implementation of A*. Our results are consistent with that choice, but they do not show which algorithm any company uses today. We compared with one newer fast planner (LaCAM) only through our own Python implementation of its basic form.
 
 ## Team
 
@@ -111,7 +111,7 @@ For small fleets PP is usually optimal or close to it, but the typical gap grows
 | Aisle | 78 / 200 (39.0%) |
 | Warehouse | 193 / 200 (96.5%) |
 
-On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. Not every aisle instance needs to have a plan at all: at least 185 of the 200 do (failed-robot-first found one), and for the other 15 we do not know. The difference between the layouts is far beyond chance (Fisher exact p < 10⁻³⁸, [`analysis/significance.txt`](analysis/significance.txt)). A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
+On the aisle layout, fixed-order PP found a plan for at most 5 of 20 instances at every size from 10 robots up. These are failures of the planner, not of the instances: our LaCAM implementation (a complete planner, see section 5) found a valid plan for all 400 instances ([`analysis/lacam_small.txt`](analysis/lacam_small.txt)). The difference between the layouts is far beyond chance (Fisher exact p < 10⁻³⁸, [`analysis/significance.txt`](analysis/significance.txt)). A likely reason: when goals are in side bays, a parked robot does not block a corridor that later robots need. The two layouts differ in more than this one factor, so the comparison shows a strong association, not a proof of cause.
 
 **Theory check: revised PP.** Čáp et al. (2015) prove that *revised* PP (RPP) always finds a plan when the instance is "well-formed": between any two starts or goals there is a path that avoids all other starts and goals. RPP adds one rule to our PP: a robot never enters the start cell of a robot planned after it, which is still standing there. All 200 warehouse instances are well-formed; 185 of the 200 aisle instances are not (checked by `rpp_check.py`). [`analysis/rpp_check.py`](analysis/rpp_check.py) adds the rule ([`analysis/rpp_check.csv`](analysis/rpp_check.csv)):
 
@@ -154,6 +154,9 @@ We repeated PP on `warehouse-10-20-10-2-1` from the MovingAI MAPF benchmark (161
 
 - **Second map:** on `warehouse-10-20-10-2-2` (same shelves, two-cell aisles, 9,776 free cells), fixed-order PP solved 30 of 30 instances with 100, 200 and 300 robots (one-cell-aisle map: 17 of 30). That map is also larger and so less crowded at the same robot count, so this does not isolate aisle width.
 
+- **Newer planner (LaCAM):** our Python implementation of basic LaCAM, a planner that never gives up on a solvable instance, also solved 0 of 20 instances with goals in the shelf aisles at 200 and 300 robots, against 20 of 20 with goals in open areas (p = 1.5 × 10⁻¹¹). Where it succeeded it was much faster than PP (under 1 s against 2.5–30 s with open-area goals), but its plans cost three to four times as much above the lower bound. With random endpoints it timed out more often than PP at 200 and 250 robots. It is not the authors' optimized code, so this is not a test of LaCAM's best performance.
+- **One-way aisles ("social rules"):** with alternating one-way aisles in the shelf area, PP solved 0 of 50 instances where robots stop inside the aisles (two-way: 14 of 50; p = 0.00012), because a robot parked in a one-way aisle closes it. With goals in the open areas it solved 20 of 20 (two-way: 16 of 20; not significant, p = 0.12).
+
 Details, limits and how to run: [`scale/README.md`](scale/README.md).
 
 ## Verification
@@ -174,7 +177,7 @@ The experiment code was checked by separately written code (see [`verification/R
 | `outputs/` | Results of the main run (CSV, saved paths, plots, `EXPERIMENT_REPORT.md`) |
 | `analysis/` | Cost gap against CBS optima |
 | `presentation/` | Side-by-side animation for the talk |
-| `scale/` | PP on a standard benchmark warehouse map, 50 to 300 robots |
+| `scale/` | Benchmark-map experiments: PP at 50 to 300 robots, goal areas, LaCAM, one-way aisles, second map |
 | `verification/` | Independent checks and the reference CBS |
 | `tests/` | Unit and pipeline tests |
 | [`docs/TECHNICAL.md`](docs/TECHNICAL.md) | Full technical documentation: data format, method details, metrics |
@@ -195,7 +198,7 @@ Quick check: `python run.py --quick --output quick_outputs`.
 
 ## AI usage
 
-The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md`](AI_USAGE.md)). The verification code, the CBS analysis, the side-by-side animation and the benchmark-scale experiment were written with the help of Claude. All numbers in this README come from actual runs saved in this repository.
+The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md`](AI_USAGE.md)). The verification code, the CBS analysis, the side-by-side animation, the benchmark-scale experiments and the LaCAM implementation were written with the help of Claude. All numbers in this README come from actual runs saved in this repository.
 
 ## References
 
@@ -207,5 +210,7 @@ The experiment package was written with the help of ChatGPT/Codex ([`AI_USAGE.md
 - Čáp et al. (2015), *Prioritized Planning Algorithms for Trajectory Coordination of Multiple Mobile Robots*.
 - Wurman, D'Andrea & Mountz (2008), *Coordinating Hundreds of Cooperative, Autonomous Vehicles in Warehouses*, AI Magazine 29(1).
 - Brown (2022), *How Amazon robots navigate congestion*, Amazon Science, May 24, 2022.
+- Okumura (2023), *LaCAM: Search-Based Algorithm for Quick Multi-Agent Pathfinding*, AAAI.
+- Okumura et al. (2022), *Priority Inheritance with Backtracking for Iterative Multi-Agent Path Finding* (PIBT), Artificial Intelligence.
 
 This is a small-scale educational study of published principles. It does not reproduce any company's maps, code or fleet sizes.
