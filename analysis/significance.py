@@ -97,6 +97,19 @@ def main():
         out.append("  " + mcnemar("goals in open areas (200 and 300 robots): two-way vs one-way",
                                   [(two[r["instance_id"]], ok(r)) for r in one]))
 
+    if (ROOT / "scale/lifelong_results.csv").exists():
+        from scipy.stats import mannwhitneyu
+        out.append("")
+        out.append("Lifelong planning: throughput, two-way vs one-way aisles (5 runs each, Mann-Whitney exact)")
+        life = rows("scale/lifelong_results.csv")
+        for mode in ("shelf", "open", "alternate"):
+            for k in ("100", "200", "300"):
+                a_ = [float(r["throughput"]) for r in life if r["goals"] == mode and r["num_robots"] == k and r["traffic"] == "two_way"]
+                b_ = [float(r["throughput"]) for r in life if r["goals"] == mode and r["num_robots"] == k and r["traffic"] == "one_way"]
+                pv = mannwhitneyu(a_, b_, alternative="two-sided", method="exact").pvalue
+                out.append(f"  {mode} goals, {k} robots: two-way mean {sum(a_) / len(a_):.2f}, "
+                           f"one-way mean {sum(b_) / len(b_):.2f}, p = {pv:.2g}")
+
     text = "\n".join(out) + "\n"
     (ROOT / "analysis/significance.txt").write_text(text, encoding="utf-8")
     print(text, end="")

@@ -153,6 +153,32 @@ Full data: [`oneway_results.csv`](oneway_results.csv), [`oneway_open.csv`](onewa
 
 These runs and follow-up 3 ran at the same time on a 2-core machine. A few successes finished close to the 60 s limit (for example LaCAM's single successes at 250 and 300 robots, at 55 and 56 s), so counts near the limit may depend on machine load.
 
+## Follow-up 5: lifelong planning (tasks keep arriving)
+
+All runs above plan one batch: each robot gets one goal and stays there, so a robot that stops in an aisle blocks it for good. Real warehouses never stop. [`lifelong.py`](lifelong.py) simulates that: when a robot reaches its goal it gets the next task at once. Planning follows the idea of rolling-horizon collision resolution (RHCR, Li et al., 2021) in a simplified form: every 5 steps all robots are replanned with PP, and paths only have to avoid each other for the next 10 steps. A robot that cannot be planned waits in place for that window, so one stuck robot never stops the others. Every executed step is checked (legal move, no shared cell, no swap). 500 steps per run, 5 runs per setting, random start cells.
+
+![Lifelong planning](lifelong.png)
+
+| Tasks | Robots | Throughput (tasks per step), two-way / one-way | Efficiency, two-way / one-way | Robots that never finished a task (worst run), two-way / one-way |
+| --- | ---: | ---: | ---: | ---: |
+| In shelf aisles | 100 | 1.32 / 1.23 | 0.76 / 0.71 | 0 / 0 |
+| In shelf aisles | 200 | 1.09 / 2.40 | 0.31 / 0.69 | 38 / 0 |
+| In shelf aisles | 300 | 0.80 / 3.46 | 0.15 / 0.67 | 114 / 0 |
+| In open areas | 100 | 0.94 / 1.01 | 0.75 / 0.82 | 0 / 0 |
+| In open areas | 200 | 1.66 / 1.97 | 0.67 / 0.82 | 0 / 0 |
+| In open areas | 300 | 1.58 / 2.99 | 0.37 / 0.82 | 41 / 0 |
+| Alternating shelf and open area | 100 | 0.93 / 0.95 | 0.78 / 0.80 | 0 / 0 |
+| Alternating shelf and open area | 200 | 1.39 / 1.89 | 0.57 / 0.79 | 8 / 0 |
+| Alternating shelf and open area | 300 | 1.17 / 2.82 | 0.29 / 0.78 | 85 / 0 |
+
+Throughput and efficiency are means of 5 runs. *Efficiency* is the summed shortest-path length (on the two-way map) of all finished tasks divided by robots × steps: the share of robot time that turned into useful progress, independent of how long the tasks are. "Alternating" sends each robot alternately to a shelf-area cell and an open-area cell, like fetching a shelf and bringing it to a station. Full data: [`lifelong_results.csv`](lifelong_results.csv); tests in [`../analysis/significance.txt`](../analysis/significance.txt).
+
+- **With two-way aisles, adding robots beyond 200 lowers throughput.** In every task setting, 300 robots finished fewer tasks per step than 200 (shelf: 1.09 → 0.80), and in the worst run 41 to 114 robots never finished a task. The most likely cause: robots meeting head-on in one-cell aisles block each other, and planning only 10 steps ahead cannot resolve it (we did not trace individual blockages).
+- **One-way aisles reverse this.** With the same tasks and robots, throughput keeps rising with the number of robots (shelf: 1.23 → 2.40 → 3.46), efficiency stays between 0.67 and 0.82, and every robot finished tasks. At 200 and 300 robots, in each of the six settings every one-way run had a higher throughput than every two-way run (Mann-Whitney exact p = 0.008, the smallest possible with 5 runs each).
+- **At 100 robots the difference is small:** one-way cost a little with tasks in the shelf area (1.32 against 1.23, p = 0.008), where one-way routes are longer and there is little congestion to avoid, and helped a little with tasks in the open areas (0.94 against 1.01).
+- **This reverses the one-shot result of follow-up 4**, where one-way rules made PP fail. In the one-shot model a parked robot closes a one-way aisle forever; in lifelong operation robots leave their goals, and the main problem becomes robots meeting head-on, which one-way rules prevent.
+- **Limits:** this is a simplified RHCR: PP instead of the stronger planners RHCR uses (PBS, ECBS), no reservations beyond the window, a goal counts only when the robot stands on it at a replanning (every 5 steps), one map. A stronger windowed planner might handle two-way aisles better, so the size of the gap is specific to our planner; the direction matches the traffic rules that Amazon describes.
+
 ## How the speed-up was checked
 
 `mapf.py` checks every earlier robot's path for every candidate move. That is too slow at this size: with 50 robots `mapf.py` took 1.7 to 9.3 s per run where `fast_pp.py` took 0.3 to 1.3 s ([`equivalence_check.txt`](equivalence_check.txt)), and in a trial run (not saved) 200 robots did not finish within 2 minutes. [`fast_pp.py`](fast_pp.py) implements the same algorithm with the same neighbour order, tie-breaking, horizon and reordering rules, but keeps the reservations in hash tables. [`check_equivalence.py`](check_equivalence.py) confirms that both return identical paths and statuses:
@@ -169,7 +195,7 @@ Plans in this folder are checked with `check_plan` in `run_scale.py`, which gave
 - **Python runtimes.** Production planners are compiled and heavily optimized; the times show the trend, not achievable speed.
 - **10 instances per size.** Success rates move in steps of 10 percentage points; the dip at 100 robots (8/10) next to 150 (10/10) is within that noise.
 - **Random endpoints.** The benchmark map has no recessed bays, so this does not repeat the main experiment's warehouse layout.
-- **One-shot planning.** Real warehouses assign new tasks continuously (lifelong MAPF); this experiment plans one batch, and finished robots stay on their goals.
+- **One-shot planning in most runs.** Except for follow-up 5, robots plan one batch and stay on their goals; follow-up 5 simulates continuous tasks with a simplified planner.
 - **Two maps from one benchmark family.** Both maps are synthetic MovingAI warehouses with random endpoints; real fulfilment centres differ in layout and in where tasks start and end.
 - **Newer fast planners only in a basic form.** LaCAM was run as our own Python implementation of the basic algorithm (follow-up 3); the authors' optimized code, LaCAM* and windowed planning (RHCR) were not run.
 - **Map source.** The benchmark site was not reachable from the environment used, so the map was copied from the `lacam3` repository ([github.com/kei18/lacam3](https://github.com/kei18/lacam3), commit `1c3ecf8`, `scripts/map/`). The original is at [movingai.com/benchmarks/mapf](https://movingai.com/benchmarks/mapf/index.html).
@@ -190,6 +216,7 @@ python scale/run_scale.py --map warehouse-10-20-10-2-2   # second map (about 25 
 python scale/run_lacam.py scale     # follow-up 3: LaCAM, random endpoints (about 30 minutes)
 python scale/run_lacam.py endpoints # follow-up 3: LaCAM, goal areas (about 30 minutes)
 python scale/oneway.py              # follow-up 4: one-way aisles (about 50 minutes; then: oneway.py open)
+python scale/lifelong.py            # follow-up 5: lifelong planning (about 25 minutes)
 ```
 
 ## Reference
