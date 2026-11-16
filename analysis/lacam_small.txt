@@ -1,0 +1,6 @@
+Counter({('lacam', 'warehouse', 'solved'): 200, ('lacam_skip', 'warehouse', 'solved'): 200, ('lacam_skip', 'aisle', 'solved'): 199, ('lacam', 'aisle', 'solved'): 190, ('lacam', 'aisle', 'timeout'): 10, ('lacam_skip', 'aisle', 'timeout'): 1})
+instances with a valid plan from either variant: 400 of 400
+plans below a proven optimum (would be a bug): 0
+aisle: gap to optimum median 0.0% max 158.6% (n=61); cost vs fixed-order PP median +3.5% (n=78)
+warehouse: gap to optimum median 3.2% max 54.5% (n=88); cost vs fixed-order PP median +10.4% (n=193)
+(run while two other experiments used both CPU cores; timeouts near the 10 s limit may differ on a quiet machine)

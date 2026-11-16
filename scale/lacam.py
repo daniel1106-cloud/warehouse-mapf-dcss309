@@ -57,8 +57,12 @@ class Node:
         self.tree = deque([Constraint()])
 
 
-def solve(instance, time_limit=60.0, seed=0, graph=None):
-    """Return dict(paths, status, runtime, nodes). status: solved / timeout / no_solution."""
+def solve(instance, time_limit=60.0, seed=0, graph=None, reinsert=True):
+    """Return dict(paths, status, runtime, nodes). status: solved / timeout / no_solution.
+
+    reinsert=False skips a configuration reached again, exactly as the AAAI pseudocode;
+    plans then tend to be very long, but the search is also complete.
+    """
     start_time = time.perf_counter()
     deadline = start_time + time_limit
     graph = graph or Graph(instance["grid"])
@@ -167,6 +171,8 @@ def solve(instance, time_limit=60.0, seed=0, graph=None):
         if new is None:
             continue
         if new in explored:
+            if not reinsert:
+                continue
             # go back to the configuration seen before instead of wandering on from here
             # (as the authors' code and LaCAM* do; the AAAI pseudocode simply skips it).
             # Completeness is kept: every node still expands all its constraints eventually.
