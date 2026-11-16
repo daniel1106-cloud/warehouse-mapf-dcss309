@@ -27,6 +27,7 @@ Usage: from scale import lacam; lacam.solve(instance, time_limit, seed)
 import random
 import sys
 import time
+from array import array
 from collections import deque
 
 from fast_pp import Graph
@@ -50,10 +51,12 @@ class Constraint:
 
 
 class Node:
-    __slots__ = ("config", "parent", "order", "priority", "tree")
+    # the robot order is not stored: it is recomputed from the priorities when needed,
+    # which keeps memory per node small (hundreds of thousands of nodes in 60 s)
+    __slots__ = ("config", "parent", "priority", "tree")
 
-    def __init__(self, config, parent, order, priority):
-        self.config, self.parent, self.order, self.priority = config, parent, order, priority
+    def __init__(self, config, parent, priority):
+        self.config, self.parent, self.priority = config, parent, priority
         self.tree = deque([Constraint()])
 
 
@@ -89,7 +92,7 @@ def solve(instance, time_limit=60.0, seed=0, graph=None, reinsert=True):
         # PIBT's dynamic priorities (as used by LaCAM): a robot away from its goal gains one
         # unit per step, a robot on its goal drops back to its small fractional part. This
         # lets every robot eventually get the highest priority, which avoids livelock.
-        return tuple(p + 1 if config[i] != goals[i] else p - int(p) for i, p in enumerate(priority))
+        return array("d", (p + 1 if config[i] != goals[i] else p - int(p) for i, p in enumerate(priority)))
 
     def get_order(priority):
         return sorted(range(k), key=lambda i: -priority[i])
@@ -141,8 +144,8 @@ def solve(instance, time_limit=60.0, seed=0, graph=None, reinsert=True):
         return tuple(nxt)
 
     longest = max(dist[i][starts[i]] for i in range(k)) + 1
-    priority0 = tuple(dist[i][starts[i]] / longest for i in range(k))  # in [0, 1): ties by distance
-    root = Node(starts, None, get_order(priority0), priority0)
+    priority0 = array("d", (dist[i][starts[i]] / longest for i in range(k)))  # in [0, 1): ties by distance
+    root = Node(starts, None, priority0)
     open_ = [root]
     explored = {starts: root}
     nodes = 1
@@ -161,13 +164,14 @@ def solve(instance, time_limit=60.0, seed=0, graph=None, reinsert=True):
             open_.pop()
             continue
         c = node.tree.popleft()
+        order = get_order(node.priority)
         if c.depth < k:
-            i = node.order[c.depth]
+            i = order[c.depth]
             options = list(graph.steps[node.config[i]]) + [node.config[i]]
             rng.shuffle(options)
             for v in options:
                 node.tree.append(Constraint(c, i, v))
-        new = generate(node.config, node.order, c)
+        new = generate(node.config, order, c)
         if new is None:
             continue
         if new in explored:
@@ -179,7 +183,7 @@ def solve(instance, time_limit=60.0, seed=0, graph=None, reinsert=True):
             open_.append(explored[new])
             continue
         priority = next_priority(new, node.priority)
-        child = Node(new, node, get_order(priority), priority)
+        child = Node(new, node, priority)
         explored[new] = child
         open_.append(child)
         nodes += 1

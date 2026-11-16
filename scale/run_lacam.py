@@ -6,7 +6,7 @@ Two sets, the same instances as before, so the rows can be compared with PP dire
 60 s limit per run, plans re-checked with run_scale.check_plan.
 
 Outputs: scale/lacam_scale.csv, scale/lacam_endpoints.csv
-Usage:   python scale/run_lacam.py scale        (or: endpoints)
+Usage:   python scale/run_lacam.py scale        (or: endpoints; add --resume to continue)
 """
 import csv
 import json
@@ -40,10 +40,16 @@ def instances(which):
 def main(which, limit=60):
     graph = fast_pp.Graph(load_map(MAP))
     target = HERE / f"lacam_{which}.csv"
-    with target.open("w", newline="", encoding="utf-8") as f:
+    done = set()
+    if "--resume" in sys.argv and target.exists():  # continue an interrupted run
+        done = {r["instance_id"] for r in csv.DictReader(target.open(encoding="utf-8"))}
+    with target.open("a" if done else "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
-        w.writeheader()
+        if not done:
+            w.writeheader()
         for area, iid, seed, inst in instances(which):
+            if iid in done:
+                continue
             lb = lower_bound(inst, graph)
             r = lacam.solve(inst, limit, seed, graph)
             row = dict(set=which, goal_area=area, num_robots=len(inst["starts"]), instance_id=iid, seed=seed,
