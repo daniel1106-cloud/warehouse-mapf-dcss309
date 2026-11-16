@@ -22,3 +22,14 @@ Benchmark map, LaCAM (scale/lacam.py)
 Benchmark map, one-way aisles vs two-way (fixed-order PP, same instances)
   goals anywhere or in shelf aisles (200-300 robots): two-way vs one-way: 14 -> 0 of 50 (gained 0, lost 14), McNemar exact p = 0.00012
   goals in open areas (200 and 300 robots): two-way vs one-way: 16 -> 20 of 20 (gained 4, lost 0), McNemar exact p = 0.12
+
+Lifelong planning: throughput, two-way vs one-way aisles (5 runs each, Mann-Whitney exact)
+  shelf goals, 100 robots: two-way mean 1.32, one-way mean 1.23, p = 0.0079
+  shelf goals, 200 robots: two-way mean 1.09, one-way mean 2.40, p = 0.0079
+  shelf goals, 300 robots: two-way mean 0.80, one-way mean 3.46, p = 0.0079
+  open goals, 100 robots: two-way mean 0.94, one-way mean 1.01, p = 0.0079
+  open goals, 200 robots: two-way mean 1.66, one-way mean 1.97, p = 0.0079
+  open goals, 300 robots: two-way mean 1.58, one-way mean 2.99, p = 0.0079
+  alternate goals, 100 robots: two-way mean 0.93, one-way mean 0.95, p = 0.095
+  alternate goals, 200 robots: two-way mean 1.39, one-way mean 1.89, p = 0.0079
+  alternate goals, 300 robots: two-way mean 1.17, one-way mean 2.82, p = 0.0079
