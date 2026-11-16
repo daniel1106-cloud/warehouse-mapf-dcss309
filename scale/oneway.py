@@ -15,8 +15,11 @@ the shelf-aisle-goal instances with 200 and 300 robots (run_endpoints.py), the s
 where two-way PP failed most. Same 60 s limit. Cost is reported against the same two-way
 lower bound as before, so it includes any detour the rules force.
 
-Outputs: scale/oneway_results.csv
-Usage:   python scale/oneway.py
+A second run ("open") uses the instances with goals in the open side areas, so that no
+robot parks inside a one-way aisle.
+
+Outputs: scale/oneway_results.csv, scale/oneway_open.csv
+Usage:   python scale/oneway.py        (then: python scale/oneway.py open)
 """
 import csv
 import json
@@ -83,8 +86,13 @@ def strongly_connected(graph):
     return len(forward) == len(back) == len(graph.steps)
 
 
-def instances():
+def instances(which="main"):
     grid = load_map(MAP)
+    if which == "open":
+        for area, k, j, seed, inst in run_endpoints.make_instances():
+            if area == "open_area" and k >= 200:
+                yield "open_goals", f"{area}-k{k}-{j:03d}", seed, inst
+        return
     for d in json.loads((HERE / "instances.json").read_text())["instances"]:
         if len(d["starts"]) >= 200:
             yield "random", d["id"], d["seed"], dict(grid=grid, starts=[tuple(p) for p in d["starts"]],
@@ -94,19 +102,20 @@ def instances():
             yield "shelf_goals", f"{area}-k{k}-{j:03d}", seed, inst
 
 
-def main(limit=60):
+def main(which="main", limit=60):
     grid = load_map(MAP)
     two_way, one_way = fast_pp.Graph(grid), OneWayGraph(grid)
     assert strongly_connected(one_way), "one-way rules disconnect the map"
     fields = ["set", "num_robots", "instance_id", "seed", "solver", "success", "status", "runtime_sec",
               "attempts", "sum_of_costs", "lower_bound", "gap_upper_pct"]
-    with (HERE / "oneway_results.csv").open("w", newline="", encoding="utf-8") as f:
+    target = "oneway_results.csv" if which == "main" else "oneway_open.csv"
+    with (HERE / target).open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
-        for which, iid, seed, inst in instances():
+        for group, iid, seed, inst in instances(which):
             lb = lower_bound(inst, two_way)
             r = fast_pp.solve(inst, limit, "pp", seed, 32, graph=one_way)
-            row = dict(set=which, num_robots=len(inst["starts"]), instance_id=iid, seed=seed, solver="pp_oneway",
+            row = dict(set=group, num_robots=len(inst["starts"]), instance_id=iid, seed=seed, solver="pp_oneway",
                        status=r["status"], runtime_sec=round(r["runtime"], 4), attempts=r["attempts"],
                        lower_bound=lb, success=False, sum_of_costs="", gap_upper_pct="")
             if r["paths"] is not None:
@@ -123,4 +132,4 @@ def main(limit=60):
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "main")
