@@ -97,6 +97,16 @@ def main():
         out.append("  " + mcnemar("goals in open areas (200 and 300 robots): two-way vs one-way",
                                   [(two[r["instance_id"]], ok(r)) for r in one]))
 
+    if (ROOT / "scale/extra_oneway.csv").exists():
+        xo = rows("scale/extra_oneway.csv")
+        xd = {(r["instance_id"], r["solver"]): ok(r) for r in xo}
+        new = [(xd[(i, "pp")], xd[(i, "pp_oneway")]) for i in sorted({r["instance_id"] for r in xo})]
+        old = [(two[r["instance_id"]], ok(r)) for r in rows("scale/oneway_open.csv")]
+        out.append("")
+        out.append("One-way aisles with open-area goals, more instances (scale/extra_runs.py oneway)")
+        out.append("  " + mcnemar("20 more instances per size, 200 and 300 robots: two-way vs one-way", new))
+        out.append("  " + mcnemar("all 30 instances per size: two-way vs one-way", old + new))
+
     if (ROOT / "scale/extra_cutoff.csv").exists():
         xc = rows("scale/extra_cutoff.csv")
         xd = {(r["instance_id"], r["solver"]): ok(r) for r in xc}

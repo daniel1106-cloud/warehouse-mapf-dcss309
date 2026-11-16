@@ -23,6 +23,10 @@ Benchmark map, one-way aisles vs two-way (fixed-order PP, same instances)
   goals anywhere or in shelf aisles (200-300 robots): two-way vs one-way: 14 -> 0 of 50 (gained 0, lost 14), McNemar exact p = 0.00012
   goals in open areas (200 and 300 robots): two-way vs one-way: 16 -> 20 of 20 (gained 4, lost 0), McNemar exact p = 0.12
 
+One-way aisles with open-area goals, more instances (scale/extra_runs.py oneway)
+  20 more instances per size, 200 and 300 robots: two-way vs one-way: 31 -> 35 of 40 (gained 7, lost 3), McNemar exact p = 0.34
+  all 30 instances per size: two-way vs one-way: 47 -> 55 of 60 (gained 11, lost 3), McNemar exact p = 0.057
+
 Cut-off test, more instances (scale/extra_runs.py cutoff)
   20 more instances per size, 100-250 robots: without vs with cut-off test: 63 -> 79 of 80 (gained 16, lost 0), McNemar exact p = 3.1e-05
   all 30 instances per size, 100-250 robots: without vs with cut-off test: 95 -> 117 of 120 (gained 23, lost 1), McNemar exact p = 3e-06
