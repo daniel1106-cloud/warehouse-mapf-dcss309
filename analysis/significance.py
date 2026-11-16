@@ -97,6 +97,14 @@ def main():
         out.append("  " + mcnemar("goals in open areas (200 and 300 robots): two-way vs one-way",
                                   [(two[r["instance_id"]], ok(r)) for r in one]))
 
+    if (ROOT / "scale/extra_density.csv").exists():
+        dens = rows("scale/extra_density.csv")
+        one = [ok(r) for r in dens if r["map"] == "warehouse-10-20-10-2-1"]
+        two = [ok(r) for r in dens if r["map"] == "warehouse-10-20-10-2-2"]
+        out.append("")
+        out.append("Aisle width at equal robots per free cell (fixed-order PP, 120 s)")
+        out.append("  " + fisher("one-cell aisles (100/200/300 robots) vs two-cell aisles (172/343/515 robots)", one, two))
+
     if (ROOT / "scale/lifelong_results.csv").exists():
         from scipy.stats import mannwhitneyu
         out.append("")

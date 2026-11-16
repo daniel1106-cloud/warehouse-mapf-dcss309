@@ -107,7 +107,15 @@ To check that the results are not specific to one map, [`run_scale.py --map`](ru
 
 - **The same pattern holds on a second map:** coordination is essential (hundreds of collisions without it), PP plans hundreds of robots in seconds to tens of seconds, and the upper bound on its cost gap grows with crowding (7.0% → 15.6%).
 - **With two-cell aisles PP never failed** (30 of 30), where the one-cell-aisle map gave 17 of 30 at the same robot counts, plausibly because a parked robot in a two-cell aisle leaves room to pass.
-- **Limit:** this map is also larger (9,776 free cells against 5,699), so the same number of robots is less crowded: in robots per free cell, 300 robots here are about as dense as 175 on the first map, where PP solved 10 of 10 at 150 and 8 of 10 at 200. The comparison therefore does not isolate aisle width; it shows that the findings carry over to a second benchmark warehouse.
+- **Crowding is not the explanation.** This map is larger (9,776 free cells against 5,699), so the same number of robots is less crowded. [`extra_runs.py density`](extra_runs.py) therefore repeats both maps at the same robots per free cell: 100, 200, 300 robots on the one-cell-aisle map (the instances above) and 172, 343, 515 robots here, with a 120 s limit on both because the larger plans take longer in Python.
+
+| Robots per free cell | One-cell aisles: robots, plans found | Two-cell aisles: robots, plans found |
+| ---: | ---: | ---: |
+| 1.75% | 100: 8/10 | 172: 10/10 |
+| 3.5% | 200: 8/10 | 343: 10/10 |
+| 5.3% | 300: 1/10 | 515: 8/10 |
+
+  At equal crowding PP solved 28 of 30 instances with two-cell aisles against 17 of 30 with one-cell aisles (Fisher exact p = 0.002). The doubled time limit did not change any one-cell result. The maps still differ in size and layout details, so this is strong evidence for aisle width, not a controlled experiment on width alone. Full data: [`extra_density.csv`](extra_density.csv).
 
 ## Follow-up 3: a newer fast planner (LaCAM)
 

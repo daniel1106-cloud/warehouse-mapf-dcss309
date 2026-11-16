@@ -23,6 +23,9 @@ Benchmark map, one-way aisles vs two-way (fixed-order PP, same instances)
   goals anywhere or in shelf aisles (200-300 robots): two-way vs one-way: 14 -> 0 of 50 (gained 0, lost 14), McNemar exact p = 0.00012
   goals in open areas (200 and 300 robots): two-way vs one-way: 16 -> 20 of 20 (gained 4, lost 0), McNemar exact p = 0.12
 
+Aisle width at equal robots per free cell (fixed-order PP, 120 s)
+  one-cell aisles (100/200/300 robots) vs two-cell aisles (172/343/515 robots): 17/30 vs 28/30, Fisher exact p = 0.0021
+
 Lifelong planning: throughput, two-way vs one-way aisles (5 runs each, Mann-Whitney exact)
   shelf goals, 100 robots: two-way mean 1.32, one-way mean 1.23, p = 0.0079
   shelf goals, 200 robots: two-way mean 1.09, one-way mean 2.40, p = 0.0079
