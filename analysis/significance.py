@@ -97,6 +97,17 @@ def main():
         out.append("  " + mcnemar("goals in open areas (200 and 300 robots): two-way vs one-way",
                                   [(two[r["instance_id"]], ok(r)) for r in one]))
 
+    if (ROOT / "scale/extra_cutoff.csv").exists():
+        xc = rows("scale/extra_cutoff.csv")
+        xd = {(r["instance_id"], r["solver"]): ok(r) for r in xc}
+        new = [(xd[(i, "pp_promote")], xd[(i, "pp_promote_cutoff")]) for i in sorted({r["instance_id"] for r in xc})]
+        out.append("")
+        out.append("Cut-off test, more instances (scale/extra_runs.py cutoff)")
+        out.append("  " + mcnemar("20 more instances per size, 100-250 robots: without vs with cut-off test", new))
+        sizes = ("-k100-", "-k150-", "-k200-", "-k250-")
+        old = [(base[i], cut[i]) for i in cut if any(z in i for z in sizes)]
+        out.append("  " + mcnemar("all 30 instances per size, 100-250 robots: without vs with cut-off test", old + new))
+
     if (ROOT / "scale/extra_density.csv").exists():
         dens = rows("scale/extra_density.csv")
         one = [ok(r) for r in dens if r["map"] == "warehouse-10-20-10-2-1"]
